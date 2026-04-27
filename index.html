@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人员管理系统 · 智档 Pro</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-dark: #1557b0;
+            --danger: #d93025;
+            --danger-dark: #a50e0e;
+            --success: #188038;
+            --warning: #e8710a;
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #202124;
+            --text-secondary: #5f6368;
+            --border: #e0e0e0;
+            --border-light: #f1f3f4;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+            --radius: 10px;
+            --radius-sm: 6px;
+            --transition: 0.2s ease;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh;
+        }
+        .app-header {
+            background: var(--card-bg); border-bottom: 1px solid var(--border);
+            padding: 0 24px; display: flex; align-items: center; justify-content: space-between;
+            height: 60px; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100;
+        }
+        .app-header .logo { font-size: 20px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .app-header .logo .icon { width: 36px; height: 36px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; }
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        .sync-status { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+        .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #34a853; animation: pulse-dot 2s infinite; }
+        .sync-dot.offline { background: #ea4335; animation: none; }
+        @keyframes pulse-dot { 0%,100%{box-shadow:0 0 0 0 rgba(52,168,83,0.4)} 50%{box-shadow:0 0 0 10px rgba(52,168,83,0)} }
+        .tab-nav { display: flex; gap: 4px; padding: 16px 24px 0; background: var(--card-bg); border-bottom: 1px solid var(--border-light); position: sticky; top: 60px; z-index: 90; }
+        .tab-btn { padding: 12px 24px; border: none; background: transparent; cursor: pointer; font-size: 15px; font-weight: 500; color: var(--text-secondary); border-radius: var(--radius-sm) var(--radius-sm) 0 0; transition: var(--transition); position: relative; white-space: nowrap; }
+        .tab-btn:hover { color: var(--primary); background: rgba(26,115,232,0.04); }
+        .tab-btn.active { color: var(--primary); font-weight: 600; }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 24px; right: 24px; height: 3px; background: var(--primary); border-radius: 3px 3px 0 0; }
+        .main-container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; margin-bottom: 20px; border: 1px solid var(--border-light); }
+        .card-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 18px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; font-weight: 500; transition: var(--transition); white-space: nowrap; letter-spacing: 0.2px; text-decoration: none; }
+        .btn-primary { background: var(--primary); color: #fff; } .btn-primary:hover { background: var(--primary-dark); box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
+        .btn-danger { background: var(--danger); color: #fff; } .btn-danger:hover { background: var(--danger-dark); box-shadow: 0 4px 12px rgba(217,48,37,0.3); }
+        .btn-outline { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); } .btn-outline:hover { background: rgba(26,115,232,0.06); }
+        .btn-success { background: var(--success); color: #fff; } .btn-success:hover { background: #146b2e; box-shadow: 0 4px 12px rgba(24,128,56,0.3); }
+        .btn-warning { background: var(--warning); color: #fff; } .btn-warning:hover { background: #c7620a; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 4px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+        .btn-info { background: #f0f7ff; color: #1a73e8; border: 1.5px solid #1a73e8; }
+        .btn-info:hover { background: #e3f0ff; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 5px; color: var(--text); font-size: 13px; letter-spacing: 0.2px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; transition: var(--transition); background: #fafafa; color: var(--text); }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,115,232,0.1); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+        .table-wrapper { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); max-height: 60vh; overflow-y: auto; position: relative; }
+        .table-wrapper table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1400px; }
+        .table-wrapper thead { position: sticky; top: 0; z-index: 10; }
+        .table-wrapper thead th { background: #f8f9fa; font-weight: 600; color: var(--text); padding: 12px 10px; border-bottom: 2px solid var(--border); white-space: nowrap; text-align: center; font-size: 12px; letter-spacing: 0.3px; }
+        .table-wrapper tbody td { padding: 10px; border-bottom: 1px solid var(--border-light); text-align: center; white-space: nowrap; }
+        .table-wrapper tbody tr { transition: var(--transition); cursor: default; }
+        .table-wrapper tbody tr:hover { background: #e8f0fe; }
+        .table-wrapper tbody tr.selected { background: #d2e3fc; }
+        .table-wrapper .checkbox-cell { width: 40px; text-align: center; }
+        .table-wrapper .checkbox-cell input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s ease; }
+        .modal { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-lg); width: 90%; max-width: 750px; max-height: 85vh; overflow-y: auto; padding: 28px 30px; position: relative; }
+        .modal h3 { font-size: 18px; margin-bottom: 20px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+        .modal-close { position: absolute; top: 16px; right: 18px; background: none; border: none; font-size: 24px; cursor: pointer; color: #999; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+        .modal-close:hover { background: #f5f5f5; color: #333; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-light); }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 20px; border-radius: var(--radius-sm); color: #fff; font-weight: 500; font-size: 14px; box-shadow: var(--shadow-lg); animation: slideInRight 0.3s ease; max-width: 400px; word-break: break-word; }
+        .toast.success { background: #188038; } .toast.error { background: #d93025; } .toast.info { background: #1a73e8; }
+        @keyframes slideInRight { from{opacity:0;transform:translateX(100px)} to{opacity:1;transform:translateX(0)} }
+        .search-box { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+        .search-box .form-group { margin-bottom: 0; flex: 1; min-width: 160px; }
+        .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+        .filter-row .form-group { flex: 1; min-width: 150px; margin-bottom: 0; }
+        .filter-row .form-group label { font-size: 11px; margin-bottom: 3px; }
+        .filter-row .form-group input, .filter-row .form-group select { padding: 8px 10px; font-size: 13px; }
+        .badge-count { display: inline-block; background: var(--primary); color: #fff; border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 600; margin-left: 6px; }
+        .export-field-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+        .export-field-grid label { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; }
+        .login-container { max-width: 420px; margin: 60px auto; background: white; border-radius: 28px; padding: 32px 24px; box-shadow: 0 15px 30px rgba(0,20,40,0.1); }
+        .error-msg { color: #d32; font-size: 0.9rem; margin-top: 8px; }
+        .custom-input { width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; margin-top: 4px; }
+        .custom-input:disabled { background: #f0f0f0; color: #999; }
+        .login-divider { display: flex; align-items: center; margin: 16px 0; color: #999; font-size: 0.8rem; }
+        .login-divider::before, .login-divider::after { content: ''; flex: 1; border-top: 1px solid #e0e0e0; }
+        .login-divider span { padding: 0 12px; }
+        @media (max-width: 768px) {
+            .form-row { grid-template-columns: 1fr 1fr; } .tab-btn { padding: 10px 14px; font-size: 13px; }
+            .btn { padding: 8px 14px; font-size: 12px; } .modal { width: 95%; padding: 16px; max-height: 90vh; } .card { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loginPanel" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+        <div class="login-container">
+            <h2 style="text-align:center; color:#1e3a5f; margin-bottom:24px;">🔐 用户登录</h2>
+            <div style="margin-bottom: 18px;">
+                <label>用户名</label>
+                <input type="text" id="loginUser" placeholder="请输入用户名" style="width:100%; margin-top:6px; padding:10px; border-radius:20px; border:1px solid #ccc;" onkeyup="if(event.key==='Enter')performLogin()">
+            </div>
+            <div style="margin-bottom: 18px;">
+                <label>密码</label>
+                <input type="password" id="loginPwd" placeholder="请输入密码" style="width:100%; margin-top:6px; padding:10px; border-radius:20px; border:1px solid #ccc;" onkeyup="if(event.key==='Enter')performLogin()">
+            </div>
+            <div class="error-msg" id="loginError" style="display:none;"></div>
+            <button class="btn btn-primary" style="width:100%;" onclick="performLogin()" id="loginBtn">登录</button>
+            <div class="login-divider"><span>或</span></div>
+            <button class="btn btn-info" style="width:100%;" onclick="window.open('https://renyuan-shiyongshuoming-zdst2d6ef5.netlify.app/', '_blank')">📖 使用说明</button>
+            <p style="margin-top:16px; font-size:0.8rem; color:#6f8fae; text-align:center;">请联系管理员获取账号</p>
+        </div>
+    </div>
+
+    <div id="appPanel" style="display:none;">
+        <header class="app-header">
+            <div class="logo"><span class="icon">👥</span> 人员管理系统</div>
+            <div class="header-actions">
+                <span id="currentUserDisplay" style="margin-right:16px;"></span>
+                <span class="sync-status" id="syncStatus">
+                    <span class="sync-dot" id="syncDot"></span>
+                    <span id="syncText">本地存储就绪</span>
+                </span>
+                <button class="btn btn-sm" onclick="logout()">退出登录</button>
+            </div>
+        </header>
+
+        <nav class="tab-nav" id="tabNav">
+            <button class="tab-btn active" data-tab="tab-input">📝 录入</button>
+            <button class="tab-btn" data-tab="tab-query">🔍 查询</button>
+            <button class="tab-btn" data-tab="tab-data">📊 数据</button>
+        </nav>
+
+        <div class="main-container">
+            <div class="tab-panel active" id="tab-input">
+                <div class="card">
+                    <div class="card-title">📥 数据导入与新增</div>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                        <button class="btn btn-outline" onclick="importFromExcel()">📂 从EXCEL文件导入数据</button>
+                        <button class="btn btn-primary" onclick="openAddPersonModal()">➕ 新增人员</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">📋 当前数据概览</div>
+                    <p style="font-size:14px;">当前共有 <strong id="dataCountInput" style="color:var(--primary);">0</strong> 条人员记录</p>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="tab-query">
+                <div class="card">
+                    <div class="card-title">🔍 快速查找</div>
+                    <div class="search-box">
+                        <div class="form-group" style="flex:2;min-width:200px;">
+                            <label>姓名或身份证</label>
+                            <input type="text" id="quickSearch" placeholder="输入姓名或身份证号..." oninput="performQuickSearch()">
+                        </div>
+                        <button class="btn btn-outline btn-sm" onclick="clearQuickSearch()">清除</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">🔎 高级筛选 (实时生效)</div>
+                    <div class="filter-row" style="margin-bottom:12px;">
+                        <div class="form-group">
+                            <label>类别</label>
+                            <select id="f_category"><option value="">全部</option><option>注册人员</option><option>职称人员</option><option>八大员</option><option>技术工人</option><option>特殊工种</option><option>其他</option></select>
+                            <input type="text" id="f_category_custom" class="custom-input" disabled placeholder="自定义类别">
+                        </div>
+                        <div class="form-group">
+                            <label>岗位</label>
+                            <select id="f_position"><option value="">全部</option><option>建造师</option><option>工程师</option><option>安全员</option><option>质量员</option><option>施工员</option><option>资料员</option><option>劳务员</option><option>机械员</option><option>材料员</option><option>标准员</option><option>试验员</option><option>测量员</option><option>钢筋工</option><option>模板工</option><option>其他</option></select>
+                            <input type="text" id="f_position_custom" class="custom-input" disabled placeholder="自定义岗位">
+                        </div>
+                        <div class="form-group">
+                            <label>级别</label>
+                            <select id="f_level"><option value="">全部</option><option>一级</option><option>二级</option><option>A类</option><option>B类</option><option>C类</option><option>初级</option><option>中级</option><option>高级</option><option>其他</option></select>
+                            <input type="text" id="f_level_custom" class="custom-input" disabled placeholder="自定义级别">
+                        </div>
+                        <div class="form-group">
+                            <label>注册专业</label>
+                            <select id="f_major"><option value="">全部</option><option>建筑</option><option>市政</option><option>机电</option><option>水利</option><option>公路</option><option>其他</option></select>
+                            <input type="text" id="f_major_custom" class="custom-input" disabled placeholder="自定义专业">
+                        </div>
+                    </div>
+                    <div class="filter-row" style="margin-bottom:12px;">
+                        <div class="form-group">
+                            <label>所属公司</label>
+                            <select id="f_company"><option value="">全部</option><option>正大</option><option>世拓</option><option>其他</option></select>
+                            <input type="text" id="f_company_custom" class="custom-input" disabled placeholder="自定义公司">
+                        </div>
+                        <div class="form-group">
+                            <label>社保</label>
+                            <select id="f_socialSecurity"><option value="">全部</option><option>有</option><option>无</option></select>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn btn-outline btn-sm" onclick="clearAdvancedFilter()">清除筛选</button>
+                        <button class="btn btn-success btn-sm" onclick="exportQueryResults()">导出Excel</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">查询结果 <span class="badge-count" id="queryCount">0</span></div>
+                    <div class="table-wrapper" id="queryTableWrapper" style="max-height:50vh;">
+                        <table id="queryTable">
+                            <thead><tr><th class="checkbox-cell"><input type="checkbox" id="querySelectAll" onchange="toggleSelectAllQuery(this)"></th>
+                            <th>序号</th><th>姓名</th><th>身份证</th><th>类别</th><th>岗位</th><th>注册号</th><th>注册专业</th><th>有效期</th><th>级别</th><th>发证单位</th><th>联系电话</th><th>冀时办账号</th><th>冀时办密码</th><th>社保</th><th>所属公司</th><th>备注</th></tr></thead>
+                            <tbody id="queryTbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="tab-data">
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                        <div class="card-title" style="margin:0;">人员数据汇总表 <span class="badge-count" id="dataCount">0</span></div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn btn-outline btn-sm" onclick="handleEditSelected()">✏️ 编辑</button>
+                            <button class="btn btn-danger btn-sm" onclick="handleBatchDelete()">🗑️ 批量删除</button>
+                            <button class="btn btn-warning btn-sm" onclick="handleBackupToCloud()">☁️ 备份到云端</button>
+                            <button class="btn btn-outline btn-sm" onclick="handleRestoreFromCloud()">⬇️ 从云端恢复</button>
+                            <button class="btn btn-success btn-sm" onclick="exportAllData()">📥 导出EXCEL</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card" style="padding:12px 16px;">
+                    <div class="table-wrapper" id="dataTableWrapper" style="max-height:55vh;">
+                        <table id="dataTable">
+                            <thead><tr><th class="checkbox-cell"><input type="checkbox" id="dataSelectAll" onchange="toggleSelectAllData(this)"></th>
+                            <th>序号</th><th>姓名</th><th>身份证</th><th>类别</th><th>岗位</th><th>注册号</th><th>注册专业</th><th>有效期</th><th>级别</th><th>发证单位</th><th>联系电话</th><th>冀时办账号</th><th>冀时办密码</th><th>社保</th><th>所属公司</th><th>备注</th></tr></thead>
+                            <tbody id="dataTbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="passwordModal" style="display:none;">
+        <div class="modal" style="max-width:420px;">
+            <h3>🔒 身份验证</h3>
+            <div class="form-group"><label>请输入敏感信息密码</label><input type="password" id="passwordInput" onkeydown="if(event.key==='Enter')submitPassword()"></div>
+            <p id="passwordError" style="color:var(--danger);font-size:12px;display:none;">密码错误</p>
+            <div class="modal-actions">
+                <button class="btn btn-outline btn-sm" onclick="closePasswordModal()">取消</button>
+                <button class="btn btn-primary btn-sm" onclick="submitPassword()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editModal" style="display:none;">
+        <div class="modal" style="max-width:800px;">
+            <button class="modal-close" onclick="closeEditModal()">×</button>
+            <h3 id="editModalTitle">✏️ 人员信息</h3>
+            <div class="form-row">
+                <div class="form-group"><label>序号</label><input type="text" id="e_seq"></div>
+                <div class="form-group"><label>姓名 *</label><input type="text" id="e_name"></div>
+                <div class="form-group"><label>身份证</label><input type="text" id="e_idcard"></div>
+                <div class="form-group">
+                    <label>类别</label>
+                    <select id="e_category"><option>注册人员</option><option>职称人员</option><option>八大员</option><option>技术工人</option><option>特殊工种</option><option>其他</option></select>
+                    <input type="text" id="e_category_custom" class="custom-input" disabled placeholder="请输入自定义类别">
+                </div>
+                <div class="form-group">
+                    <label>岗位</label>
+                    <select id="e_position"><option>建造师</option><option>工程师</option><option>安全员</option><option>质量员</option><option>施工员</option><option>资料员</option><option>劳务员</option><option>机械员</option><option>材料员</option><option>标准员</option><option>试验员</option><option>测量员</option><option>钢筋工</option><option>模板工</option><option>其他</option></select>
+                    <input type="text" id="e_position_custom" class="custom-input" disabled placeholder="请输入自定义岗位">
+                </div>
+                <div class="form-group"><label>注册号</label><input type="text" id="e_regno"></div>
+                <div class="form-group">
+                    <label>注册专业</label>
+                    <select id="e_major"><option>建筑</option><option>市政</option><option>机电</option><option>水利</option><option>公路</option><option>其他</option></select>
+                    <input type="text" id="e_major_custom" class="custom-input" disabled placeholder="请输入自定义专业">
+                </div>
+                <div class="form-group"><label>有效期</label><input type="date" id="e_validity"></div>
+                <div class="form-group">
+                    <label>级别</label>
+                    <select id="e_level"><option>一级</option><option>二级</option><option>A类</option><option>B类</option><option>C类</option><option>初级</option><option>中级</option><option>高级</option><option>其他</option></select>
+                    <input type="text" id="e_level_custom" class="custom-input" disabled placeholder="请输入自定义级别">
+                </div>
+                <div class="form-group"><label>发证单位</label><input type="text" id="e_issuer"></div>
+                <div class="form-group"><label>联系电话</label><input type="text" id="e_phone"></div>
+                <div class="form-group"><label>冀时办账号</label><input type="text" id="e_jishibanAccount"></div>
+                <div class="form-group"><label>冀时办密码</label><input type="text" id="e_jishibanPassword"></div>
+                <div class="form-group"><label>社保</label><select id="e_socialSecurity"><option>有</option><option>无</option></select></div>
+                <div class="form-group">
+                    <label>所属公司</label>
+                    <select id="e_company"><option>正大</option><option>世拓</option><option>其他</option></select>
+                    <input type="text" id="e_company_custom" class="custom-input" disabled placeholder="请输入自定义公司">
+                </div>
+                <div class="form-group" style="grid-column: span 2;"><label>备注</label><input type="text" id="e_remarks"></div>
+            </div>
+            <input type="hidden" id="e_index" value="-1">
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeEditModal()">取消</button>
+                <button class="btn btn-primary" onclick="savePersonFromModal()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="exportFieldModal" style="display:none;">
+        <div class="modal" style="max-width:650px;">
+            <h3>📋 自定义导出列</h3>
+            <p style="margin-bottom:16px;">勾选需要导出的字段</p>
+            <div class="export-field-grid" id="exportFieldCheckboxes"></div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeExportFieldModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmExport()">确认导出</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="dueModal" style="display:none;">
+        <div class="modal" style="max-width:950px;">
+            <h3>⚠️ 需延期人员（有效期小于50天）</h3>
+            <div class="table-wrapper" style="max-height:50vh;">
+                <table id="dueTable">
+                    <thead><tr><th>序号</th><th>姓名</th><th>身份证</th><th>类别</th><th>岗位</th><th>级别</th><th>注册专业</th><th>有效期</th><th>冀时办账号</th><th>冀时办密码</th><th>所属公司</th></tr></thead>
+                    <tbody id="dueTbody"></tbody>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="document.getElementById('dueModal').style.display='none'">关闭</button>
+                <button class="btn btn-primary" onclick="downloadDueList()">📥 下载需延期人员表格</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+    (function() {
+        const _K1 = atob('WU9OR0hV'), _K2 = atob('MjAwMjAz'), _K3 = atob('MDhaRFNK'), USER_DB_KEY = _K1+_K2+_K3;
+        const _D1 = atob('REFOREFJ'), _D2 = atob('NXpMDIw'), _D3 = atob('M0xZc1k='), DATA_KEY = _D1+_D2+_D3;
+
+        let currentUser = '', currentSensitivePwd = '', isLoggedIn = false;
+        const LOCAL_KEY = 'DANGAN20020308SYRYSK';
+        let allData = [], queryResults = [], passwordCallback = null, editQueue = [], isProcessingQueue = false, pendingExportCallback = null;
+
+        const allFields = [
+            { key: 'seq', label: '序号' }, { key: 'name', label: '姓名' }, { key: 'idcard', label: '身份证' },
+            { key: 'category', label: '类别' }, { key: 'position', label: '岗位' }, { key: 'regno', label: '注册号' },
+            { key: 'major', label: '注册专业' }, { key: 'validity', label: '有效期' }, { key: 'level', label: '级别' },
+            { key: 'issuer', label: '发证单位' }, { key: 'phone', label: '联系电话' }, { key: 'jishibanAccount', label: '冀时办账号' },
+            { key: 'jishibanPassword', label: '冀时办密码' }, { key: 'socialSecurity', label: '社保' }, { key: 'company', label: '所属公司' },
+            { key: 'remarks', label: '备注' }
+        ];
+
+        function setupCustomInput(selectId, customInputId) {
+            const select = document.getElementById(selectId);
+            const customInput = document.getElementById(customInputId);
+            if (!select || !customInput) return;
+            const handler = function() {
+                if (select.value === '其他') {
+                    customInput.disabled = false;
+                    customInput.focus();
+                } else {
+                    customInput.disabled = true;
+                    customInput.value = '';
+                }
+            };
+            select.addEventListener('change', handler);
+            handler();
+        }
+
+        function getCustomInputVal(selectId, customInputId) {
+            const select = document.getElementById(selectId);
+            const input = document.getElementById(customInputId);
+            if (select && input && select.value === '其他') {
+                return input.value.trim();
+            }
+            return '';
+        }
+
+        function setCustomInputVal(selectId, customInputId, value, customVal) {
+            const select = document.getElementById(selectId);
+            const input = document.getElementById(customInputId);
+            if (!select || !input) return;
+            if (value === '其他' && customVal) {
+                select.value = '其他';
+                input.disabled = false;
+                input.value = customVal;
+            } else {
+                if (select.querySelector(`option[value="${value}"]`)) {
+                    select.value = value;
+                } else {
+                    select.value = '其他';
+                    input.disabled = false;
+                    input.value = value;
+                }
+                if (select.value !== '其他') {
+                    input.disabled = true;
+                    input.value = '';
+                }
+            }
+        }
+
+        function registerAllCustomInputs() {
+            setupCustomInput('e_category', 'e_category_custom');
+            setupCustomInput('e_position', 'e_position_custom');
+            setupCustomInput('e_major', 'e_major_custom');
+            setupCustomInput('e_level', 'e_level_custom');
+            setupCustomInput('e_company', 'e_company_custom');
+            setupCustomInput('f_category', 'f_category_custom');
+            setupCustomInput('f_position', 'f_position_custom');
+            setupCustomInput('f_major', 'f_major_custom');
+            setupCustomInput('f_level', 'f_level_custom');
+            setupCustomInput('f_company', 'f_company_custom');
+        }
+
+        async function performLogin() {
+            const user = document.getElementById('loginUser').value.trim();
+            const pwd = document.getElementById('loginPwd').value.trim();
+            const errorDiv = document.getElementById('loginError');
+            if (!user || !pwd) { errorDiv.textContent = '用户名和密码不能为空'; errorDiv.style.display = 'block'; return; }
+            document.getElementById('loginBtn').disabled = true;
+            try {
+                const resp = await fetch(`https://textdb.online/${USER_DB_KEY}`);
+                if (!resp.ok) throw new Error('网络错误');
+                const text = await resp.text();
+                if (!text) { errorDiv.textContent = '用户库不存在'; errorDiv.style.display = 'block'; return; }
+                const users = JSON.parse(text);
+                const found = users.find(u => u.user === user && u.pwd === pwd);
+                if (found) {
+                    currentUser = user; currentSensitivePwd = found.sensitivePwd || '';
+                    document.getElementById('loginPanel').style.display = 'none';
+                    document.getElementById('appPanel').style.display = 'block';
+                    document.getElementById('currentUserDisplay').textContent = '👤 ' + currentUser;
+                    isLoggedIn = true;
+                    registerAllCustomInputs();
+                    initFromLocalOnly();
+                } else { errorDiv.textContent = '用户名或密码错误'; errorDiv.style.display = 'block'; }
+            } catch(e) { errorDiv.textContent = '登录服务异常'; errorDiv.style.display = 'block'; }
+            finally { document.getElementById('loginBtn').disabled = false; document.getElementById('loginPwd').value = ''; }
+        }
+
+        function logout() { isLoggedIn = false; currentUser = ''; currentSensitivePwd = ''; document.getElementById('loginPanel').style.display = 'flex'; document.getElementById('appPanel').style.display = 'none'; allData = []; queryResults = []; }
+
+        function verifySensitive(input) { if (!currentSensitivePwd) { alert('未配置敏感信息密码'); return false; } return input === currentSensitivePwd; }
+
+        function excelSerialToDate(serial) {
+            if (typeof serial !== 'number' || isNaN(serial) || serial <= 0) return serial;
+            const baseDate = new Date(1899, 11, 30);
+            const resultDate = new Date(baseDate.getTime() + Math.round(serial) * 86400000);
+            return resultDate.getFullYear() + '-' + String(resultDate.getMonth()+1).padStart(2,'0') + '-' + String(resultDate.getDate()).padStart(2,'0');
+        }
+
+        function dateToExcelSerial(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+            return Math.round((d.getTime() - new Date(1899,11,30).getTime()) / 86400000);
+        }
+
+        function isExcelSerialNumber(val) { return typeof val === 'number' && val > 40000 && val < 80000; }
+
+        function convertToCloudFormat(data) {
+            return data.map(item => ({
+                "序号": parseInt(item.seq)||0, "姓名": item.name, "身份证": item.idcard,
+                "类别": item.category, "岗位": item.position, "注册号": item.regno,
+                "注册专业": item.major, "有效期": item.validity ? dateToExcelSerial(item.validity) : "",
+                "级别": item.level, "发证单位": item.issuer, "联系电话": item.phone,
+                "冀时办账号": item.jishibanAccount, "冀时办密码": item.jishibanPassword,
+                "社保": item.socialSecurity, "所属公司": item.company, "备注": item.remarks,
+                "类别自定义": item.categoryOther||"", "岗位自定义": item.positionOther||"",
+                "注册专业自定义": item.majorOther||"", "级别自定义": item.levelOther||"",
+                "所属公司自定义": item.companyOther||""
+            }));
+        }
+
+        function convertFromCloudFormat(cloudData) {
+            return cloudData.map(item => ({
+                seq: String(item["序号"]||""), name: item["姓名"]||"", idcard: item["身份证"]||"",
+                category: item["类别"]||"", position: item["岗位"]||"", regno: item["注册号"]||"",
+                major: item["注册专业"]||"", validity: item["有效期"] ? excelSerialToDate(parseInt(item["有效期"])) : "",
+                level: item["级别"]||"", issuer: item["发证单位"]||"", phone: item["联系电话"]||"",
+                jishibanAccount: item["冀时办账号"]||"", jishibanPassword: item["冀时办密码"]||"",
+                socialSecurity: item["社保"]||"", company: item["所属公司"]||"", remarks: item["备注"]||"",
+                categoryOther: item["类别自定义"]||"", positionOther: item["岗位自定义"]||"",
+                majorOther: item["注册专业自定义"]||"", levelOther: item["级别自定义"]||"",
+                companyOther: item["所属公司自定义"]||""
+            }));
+        }
+
+        function showToast(msg, type='info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type; toast.textContent = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        async function cloudUpdate(data) {
+            const value = JSON.stringify(data);
+            const url = `https://textdb.online/update/?key=${DATA_KEY}&value=${encodeURIComponent(value)}`;
+            try {
+                const resp = await fetch(url, { method: 'POST' });
+                if (resp.ok) { const json = await resp.json().catch(()=>null); if (json && json.status === 1) return { success: true }; }
+                return { success: false, message: '云端返回异常' };
+            } catch(e) { return { success: false, message: e.message }; }
+        }
+
+        async function cloudRead() {
+            try {
+                const resp = await fetch(`https://textdb.online/${DATA_KEY}`);
+                if (!resp.ok) return null;
+                const text = await resp.text();
+                return text ? JSON.parse(text) : null;
+            } catch(e) { return null; }
+        }
+
+        function saveLocal(data) { localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); }
+        function loadLocal() { const raw = localStorage.getItem(LOCAL_KEY); if (raw) { try { return JSON.parse(raw); } catch(e){} } return null; }
+
+        function getDefaultData() {
+            return [
+                { seq:'1', name:'韩昌华', idcard:'133001197******36', category:'注册人员', position:'建造师', regno:'冀213060804131', major:'建筑', validity:'2025-06-15', level:'二级', issuer:'', phone:'', jishibanAccount:'', jishibanPassword:'', socialSecurity:'有', company:'正大', remarks:'', categoryOther:'', positionOther:'', majorOther:'', levelOther:'', companyOther:'' },
+                { seq:'2', name:'薛学勇', idcard:'133001197******52', category:'注册人员', position:'建造师', regno:'冀213060804149', major:'建筑', validity:'2027-12-31', level:'二级', issuer:'', phone:'', jishibanAccount:'', jishibanPassword:'', socialSecurity:'有', company:'世拓', remarks:'', categoryOther:'', positionOther:'', majorOther:'', levelOther:'', companyOther:'' },
+                { seq:'3', name:'孟宪奇', idcard:'133026198******19', category:'注册人员', position:'建造师', regno:'冀213060804322', major:'建筑', validity:'2025-05-20', level:'二级', issuer:'', phone:'', jishibanAccount:'', jishibanPassword:'', socialSecurity:'有', company:'正大', remarks:'', categoryOther:'', positionOther:'', majorOther:'', levelOther:'', companyOther:'' },
+                { seq:'4', name:'马晓辉', idcard:'133001197******17', category:'注册人员', position:'建造师', regno:'冀213071796055', major:'建筑', validity:'2026-03-10', level:'二级', issuer:'', phone:'', jishibanAccount:'', jishibanPassword:'', socialSecurity:'有', company:'世拓', remarks:'', categoryOther:'', positionOther:'', majorOther:'', levelOther:'', companyOther:'' },
+                { seq:'5', name:'刘满龙', idcard:'131102197******32', category:'注册人员', position:'建造师', regno:'冀213102002465', major:'建筑', validity:'2025-04-28', level:'二级', issuer:'', phone:'', jishibanAccount:'', jishibanPassword:'', socialSecurity:'有', company:'正大', remarks:'', categoryOther:'', positionOther:'', majorOther:'', levelOther:'', companyOther:'' }
+            ];
+        }
+
+        function initFromLocalOnly() {
+            let data = loadLocal();
+            if (!data || data.length === 0) {
+                data = getDefaultData();
+                saveLocal(data);
+                showToast('已加载默认示例数据', 'info');
+            } else {
+                data = data.map(row => ({
+                    seq: row.seq || '', name: row.name || '', idcard: row.idcard || '',
+                    category: row.category || '', position: row.position || '',
+                    regno: row.regno || '', major: row.major || '',
+                    validity: row.validity || '', level: row.level || '',
+                    issuer: row.issuer || '', phone: row.phone || '',
+                    jishibanAccount: row.jishibanAccount || '', jishibanPassword: row.jishibanPassword || '',
+                    socialSecurity: row.socialSecurity || '', company: row.company || '',
+                    remarks: row.remarks || '',
+                    categoryOther: row.categoryOther || '', positionOther: row.positionOther || '',
+                    majorOther: row.majorOther || '', levelOther: row.levelOther || '',
+                    companyOther: row.companyOther || ''
+                }));
+                saveLocal(data);
+            }
+            allData = data;
+            refreshAllViews();
+            checkDueDates();
+        }
+
+        function checkDueDates() {
+            const now = new Date();
+            const dueList = allData.filter(p => {
+                if (!p.validity) return false;
+                const date = new Date(p.validity);
+                if (isNaN(date.getTime())) return false;
+                const diff = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
+                return diff < 50;
+            });
+            if (dueList.length > 0) {
+                document.getElementById('dueTbody').innerHTML = dueList.map(p => `<tr>
+                    <td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td><td>${p.category}</td><td>${p.position}</td>
+                    <td>${p.level}</td><td>${p.major}</td><td>${p.validity}</td><td>${p.jishibanAccount}</td><td>${p.jishibanPassword}</td><td>${p.company}</td></tr>`).join('');
+                document.getElementById('dueModal').style.display = 'flex';
+            }
+        }
+
+        function downloadDueList() {
+            const dueList = allData.filter(p => {
+                if (!p.validity) return false;
+                const date = new Date(p.validity);
+                if (isNaN(date.getTime())) return false;
+                const diff = Math.ceil((date - new Date()) / (1000 * 60 * 60 * 24));
+                return diff < 50;
+            });
+            const exportData = dueList.map(p => ({
+                "序号": p.seq, "姓名": p.name, "身份证": p.idcard, "类别": p.category,
+                "岗位": p.position, "级别": p.level, "注册专业": p.major,
+                "有效期": p.validity, "冀时办账号": p.jishibanAccount, "冀时办密码": p.jishibanPassword, "所属公司": p.company
+            }));
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '需延期人员');
+            XLSX.writeFile(wb, `需延期人员_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function createPersonObj(seq, name, idcard, category, position, regno, major, validity, level, issuer, phone, jishibanAccount, jishibanPassword, socialSecurity, company, remarks, categoryOther, positionOther, majorOther, levelOther, companyOther) {
+            return { seq: String(seq||''), name, idcard, category, position, regno, major, validity, level, issuer, phone, jishibanAccount, jishibanPassword, socialSecurity, company, remarks, categoryOther, positionOther, majorOther, levelOther, companyOther };
+        }
+
+        function getNextSeq() {
+            if (allData.length === 0) return '1';
+            return String(Math.max(...allData.map(d => parseInt(d.seq)||0)) + 1);
+        }
+
+        function getDisplayValue(type, value, customValue) {
+            if (value === '其他' && customValue) return customValue;
+            return value;
+        }
+
+        function refreshAllViews() {
+            refreshDataTable(); refreshQueryTable();
+            document.getElementById('dataCountInput').textContent = allData.length;
+            document.getElementById('dataCount').textContent = allData.length;
+            const cnt = queryResults.length > 0 ? queryResults.length : (hasAdvancedFilter() ? 0 : allData.length);
+            document.getElementById('queryCount').textContent = cnt;
+        }
+
+        function refreshDataTable() {
+            const tbody = document.getElementById('dataTbody');
+            tbody.innerHTML = '';
+            allData.forEach((p, i) => {
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-index', i);
+                tr.innerHTML = `<td class="checkbox-cell"><input type="checkbox" class="row-checkbox-data" data-index="${i}" onclick="event.stopPropagation();updateDataSelectAll();"></td>
+                    <td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td>
+                    <td>${getDisplayValue('category', p.category, p.categoryOther)}</td>
+                    <td>${getDisplayValue('position', p.position, p.positionOther)}</td>
+                    <td>${p.regno}</td><td>${getDisplayValue('major', p.major, p.majorOther)}</td>
+                    <td>${p.validity}</td><td>${getDisplayValue('level', p.level, p.levelOther)}</td>
+                    <td>${p.issuer}</td><td>${p.phone}</td><td>${p.jishibanAccount}</td><td>${p.jishibanPassword}</td>
+                    <td>${p.socialSecurity}</td><td>${getDisplayValue('company', p.company, p.companyOther)}</td><td>${p.remarks}</td>`;
+                tr.addEventListener('dblclick', () => handleDoubleClickRow(i));
+                tr.addEventListener('click', function(e){ if(e.target.tagName==='INPUT') return; const cb = this.querySelector('.row-checkbox-data'); if(cb){ cb.checked = !cb.checked; updateDataSelectAll(); } });
+                tbody.appendChild(tr);
+            });
+            updateDataSelectAll();
+        }
+
+        function refreshQueryTable(results) {
+            const resolved = results !== undefined ? results : (queryResults.length>0 ? queryResults : allData);
+            const tbody = document.getElementById('queryTbody');
+            tbody.innerHTML = '';
+            resolved.forEach((p, idx) => {
+                const orig = allData.indexOf(p);
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-index', orig>=0 ? orig : idx);
+                tr.innerHTML = `<td class="checkbox-cell"><input type="checkbox" class="row-checkbox-query" data-index="${orig>=0?orig:idx}"></td>
+                    <td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td>
+                    <td>${getDisplayValue('category', p.category, p.categoryOther)}</td>
+                    <td>${getDisplayValue('position', p.position, p.positionOther)}</td>
+                    <td>${p.regno}</td><td>${getDisplayValue('major', p.major, p.majorOther)}</td>
+                    <td>${p.validity}</td><td>${getDisplayValue('level', p.level, p.levelOther)}</td>
+                    <td>${p.issuer}</td><td>${p.phone}</td><td>${p.jishibanAccount}</td><td>${p.jishibanPassword}</td>
+                    <td>${p.socialSecurity}</td><td>${getDisplayValue('company', p.company, p.companyOther)}</td><td>${p.remarks}</td>`;
+                tr.addEventListener('dblclick', () => { const ri = allData.indexOf(p); if(ri>=0) handleDoubleClickRow(ri); });
+                tr.addEventListener('click', function(e){ if(e.target.tagName==='INPUT') return; const cb = this.querySelector('.row-checkbox-query'); if(cb) cb.checked = !cb.checked; });
+                tbody.appendChild(tr);
+            });
+            document.getElementById('queryCount').textContent = resolved.length;
+            document.getElementById('querySelectAll').checked = false;
+        }
+
+        function updateDataSelectAll() {
+            const cbs = document.querySelectorAll('#dataTbody .row-checkbox-data');
+            document.getElementById('dataSelectAll').checked = cbs.length>0 && Array.from(cbs).every(cb=>cb.checked);
+        }
+        function toggleSelectAllData(cb) { document.querySelectorAll('#dataTbody .row-checkbox-data').forEach(c=>c.checked=cb.checked); }
+        function toggleSelectAllQuery(cb) { document.querySelectorAll('#queryTbody .row-checkbox-query').forEach(c=>c.checked=cb.checked); }
+        function getSelectedIndices() { return Array.from(document.querySelectorAll('#dataTbody .row-checkbox-data:checked')).map(cb=>parseInt(cb.dataset.index)).filter(i=>i>=0); }
+
+        function showPasswordModal(cb) { passwordCallback=cb; document.getElementById('passwordModal').style.display='flex'; }
+        function closePasswordModal() { document.getElementById('passwordModal').style.display='none'; passwordCallback=null; }
+        function submitPassword() {
+            if (verifySensitive(document.getElementById('passwordInput').value)) {
+                document.getElementById('passwordModal').style.display='none';
+                const cb=passwordCallback; passwordCallback=null; if(cb) cb();
+            } else { document.getElementById('passwordError').style.display='block'; }
+        }
+
+        function buildExportCheckboxes() {
+            const container = document.getElementById('exportFieldCheckboxes');
+            container.innerHTML = '';
+            allFields.forEach(f => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${f.key}" checked> ${f.label}`;
+                container.appendChild(label);
+            });
+        }
+        function getSelectedFields() { return Array.from(document.querySelectorAll('#exportFieldCheckboxes input:checked')).map(cb=>cb.value); }
+        function openExportFieldModal(cb) { buildExportCheckboxes(); pendingExportCallback = cb; document.getElementById('exportFieldModal').style.display='flex'; }
+        function closeExportFieldModal() { document.getElementById('exportFieldModal').style.display='none'; pendingExportCallback=null; }
+        function confirmExport() {
+            const fields = getSelectedFields();
+            if (fields.length===0) { showToast('至少选择一个字段','error'); return; }
+            const cb = pendingExportCallback; closeExportFieldModal();
+            if (cb) cb(fields);
+        }
+        function exportWithFields(dataArray, fileName, fields) {
+            if (!dataArray.length) { showToast('无数据','error'); return; }
+            const exportData = dataArray.map(p => fields.map(k => p[k]||''));
+            const header = fields.map(k => allFields.find(f=>f.key===k)?.label || k);
+            const ws = XLSX.utils.aoa_to_sheet([header, ...exportData]);
+            ws['!cols'] = header.map(()=>({wch:15}));
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '人员数据');
+            XLSX.writeFile(wb, fileName || '导出.xlsx');
+            showToast('Excel已导出','success');
+        }
+        function exportAllData() { openExportFieldModal(fields => exportWithFields(allData, '人员数据汇总表.xlsx', fields)); }
+        function exportQueryResults() {
+            openExportFieldModal(fields => {
+                const data = queryResults.length>0 ? queryResults : allData;
+                exportWithFields(data, '查询结果导出.xlsx', fields);
+            });
+        }
+
+        function openEditModal(person, index) {
+            document.getElementById('e_index').value = index;
+            document.getElementById('e_seq').value = person.seq||'';
+            document.getElementById('e_name').value = person.name||'';
+            document.getElementById('e_idcard').value = person.idcard||'';
+            setCustomInputVal('e_category', 'e_category_custom', person.category, person.categoryOther);
+            setCustomInputVal('e_position', 'e_position_custom', person.position, person.positionOther);
+            setCustomInputVal('e_major', 'e_major_custom', person.major, person.majorOther);
+            setCustomInputVal('e_level', 'e_level_custom', person.level, person.levelOther);
+            setCustomInputVal('e_company', 'e_company_custom', person.company, person.companyOther);
+            document.getElementById('e_regno').value = person.regno||'';
+            document.getElementById('e_validity').value = person.validity||'';
+            document.getElementById('e_issuer').value = person.issuer||'';
+            document.getElementById('e_phone').value = person.phone||'';
+            document.getElementById('e_jishibanAccount').value = person.jishibanAccount||'';
+            document.getElementById('e_jishibanPassword').value = person.jishibanPassword||'';
+            document.getElementById('e_socialSecurity').value = person.socialSecurity||'有';
+            document.getElementById('e_remarks').value = person.remarks||'';
+            document.getElementById('editModalTitle').textContent = index>=0?'修改人员信息':'新增人员信息';
+            document.getElementById('editModal').style.display='flex';
+        }
+
+        function closeEditModal() { document.getElementById('editModal').style.display='none'; processEditQueue(); }
+
+        async function savePersonFromModal() {
+            const index = parseInt(document.getElementById('e_index').value);
+            const cat = document.getElementById('e_category').value;
+            const pos = document.getElementById('e_position').value;
+            const maj = document.getElementById('e_major').value;
+            const lev = document.getElementById('e_level').value;
+            const comp = document.getElementById('e_company').value;
+            const person = createPersonObj(
+                document.getElementById('e_seq').value, document.getElementById('e_name').value,
+                document.getElementById('e_idcard').value, cat, pos,
+                document.getElementById('e_regno').value, maj,
+                document.getElementById('e_validity').value, lev,
+                document.getElementById('e_issuer').value, document.getElementById('e_phone').value,
+                document.getElementById('e_jishibanAccount').value, document.getElementById('e_jishibanPassword').value,
+                document.getElementById('e_socialSecurity').value, comp,
+                document.getElementById('e_remarks').value,
+                getCustomInputVal('e_category', 'e_category_custom'),
+                getCustomInputVal('e_position', 'e_position_custom'),
+                getCustomInputVal('e_major', 'e_major_custom'),
+                getCustomInputVal('e_level', 'e_level_custom'),
+                getCustomInputVal('e_company', 'e_company_custom')
+            );
+            if (!person.name.trim()) { showToast('姓名不能为空','error'); return; }
+            if (index>=0 && index<allData.length) { allData[index] = person; }
+            else { if (!person.seq) person.seq = getNextSeq(); allData.push(person); }
+            saveLocal(allData);
+            showToast(index>=0?'已更新':'已添加','success');
+            refreshAllViews();
+            closeEditModal();
+        }
+
+        function openAddPersonModal() {
+            const np = createPersonObj(getNextSeq(), '', '', '注册人员', '建造师', '', '建筑', '', '二级', '', '', '', '', '有', '正大', '', '', '', '', '', '');
+            openEditModal(np, -1);
+        }
+
+        function processEditQueue() {
+            if (editQueue.length>0 && !isProcessingQueue) {
+                isProcessingQueue = true;
+                const ni = editQueue.shift();
+                if (ni>=0 && ni<allData.length) openEditModal(allData[ni], ni);
+                else processEditQueue();
+            } else if (editQueue.length===0) isProcessingQueue = false;
+        }
+
+        function handleEditSelected() {
+            const indices = getSelectedIndices();
+            if (!indices.length) { showToast('请勾选','error'); return; }
+            showPasswordModal(() => { editQueue = [...indices]; isProcessingQueue = false; processEditQueue(); });
+        }
+        function handleDoubleClickRow(index) {
+            if (index<0 || index>=allData.length) return;
+            showPasswordModal(() => openEditModal(allData[index], index));
+        }
+
+        async function handleBatchDelete() {
+            const indices = getSelectedIndices();
+            if (!indices.length) { showToast('请勾选','error'); return; }
+            showPasswordModal(async () => {
+                if (confirm(`确定删除 ${indices.length} 条？`)) {
+                    indices.sort((a,b)=>b-a).forEach(i => allData.splice(i,1));
+                    saveLocal(allData);
+                    refreshAllViews();
+                    showToast('已删除','success');
+                }
+            });
+        }
+
+        async function handleBackupToCloud() {
+            const res = await cloudUpdate(convertToCloudFormat(allData));
+            const dateStr = new Date().toISOString().replace(/[-:T]/g,'').slice(0,14);
+            const fields = allFields.map(f => f.key);
+            if (res.success) {
+                exportWithFields(allData, `云端备份-成功-导出-人员档案全部数据${dateStr}.xlsx`, fields);
+                showToast('云端备份成功，已导出Excel','success');
+            } else {
+                exportWithFields(allData, `云端备份-失败-导出-人员档案全部数据${dateStr}.xlsx`, fields);
+                showToast('云端备份失败，已导出Excel','error');
+            }
+        }
+
+        async function handleRestoreFromCloud() {
+            showPasswordModal(async () => {
+                const cloudData = await cloudRead();
+                if (!cloudData || !Array.isArray(cloudData)) { showToast('云端暂无数据或无法访问','info'); return; }
+                const converted = convertFromCloudFormat(cloudData);
+                const localLen = allData.length, cloudLen = converted.length;
+                let diffMsg = `云端数据 ${cloudLen} 条，本地数据 ${localLen} 条。`;
+                if (cloudLen === localLen) diffMsg += '\n条数相同，但内容可能不同。';
+                else if (cloudLen > localLen) diffMsg += `\n云端比本地多 ${cloudLen - localLen} 条。`;
+                else diffMsg += `\n本地比云端多 ${localLen - cloudLen} 条。`;
+                if (confirm(diffMsg + '\n\n确定要用云端数据覆盖本地吗？')) {
+                    allData = converted; saveLocal(allData); refreshAllViews();
+                    showToast('已从云端恢复','success');
+                }
+            });
+        }
+
+        function importFromExcel() {
+            showPasswordModal(() => {
+                const input = document.createElement('input');
+                input.type='file'; input.accept='.xlsx,.xls';
+                input.onchange = function(e) {
+                    const file = e.target.files[0]; if(!file) return;
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        const data = new Uint8Array(evt.target.result);
+                        const wb = XLSX.read(data, {type:'array'});
+                        const sheet = wb.Sheets[wb.SheetNames[0]];
+                        const json = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+                        if (json.length<2) { showToast('Excel格式错误'); return; }
+                        const rows = json.slice(1).filter(r => r.some(c => c!=='' && c!==null));
+                        const imported = rows.map(row => {
+                            const v = row[7]; let vs = '';
+                            if (typeof v==='number' && isExcelSerialNumber(v)) vs = excelSerialToDate(v);
+                            else if (v) vs = String(v);
+                            return createPersonObj(String(row[0]||''), String(row[1]||''), String(row[2]||''),
+                                String(row[3]||''), String(row[4]||''), String(row[5]||''), String(row[6]||''), vs,
+                                String(row[8]||''), String(row[9]||''), String(row[10]||''), String(row[11]||''),
+                                String(row[12]||''), String(row[13]||''), String(row[14]||''), String(row[15]||''), '', '', '', '', '');
+                        });
+                        if (!imported.length) { showToast('无有效数据'); return; }
+                        if (confirm(`追加 ${imported.length} 条？`)) {
+                            allData = [...allData, ...imported]; saveLocal(allData); refreshAllViews();
+                            showToast('导入成功','success');
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                };
+                input.click();
+            });
+        }
+
+        function hasAdvancedFilter() {
+            return ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].some(id => document.getElementById(id)?.value !== '');
+        }
+
+        function performAdvancedFilter() {
+            if (!hasAdvancedFilter()) { queryResults = []; refreshQueryTable(allData); return; }
+            const getVal = (selId, customId) => {
+                const sel = document.getElementById(selId);
+                if (sel.value === '其他') {
+                    return document.getElementById(customId).value.trim().toLowerCase();
+                }
+                return sel.value.toLowerCase();
+            };
+            const f = {
+                category: getVal('f_category', 'f_category_custom'),
+                position: getVal('f_position', 'f_position_custom'),
+                level: getVal('f_level', 'f_level_custom'),
+                major: getVal('f_major', 'f_major_custom'),
+                company: getVal('f_company', 'f_company_custom'),
+                socialSecurity: document.getElementById('f_socialSecurity').value
+            };
+            queryResults = allData.filter(p => {
+                if (f.category && getDisplayValue('category', p.category, p.categoryOther).toLowerCase().indexOf(f.category) === -1) return false;
+                if (f.position && getDisplayValue('position', p.position, p.positionOther).toLowerCase().indexOf(f.position) === -1) return false;
+                if (f.level && getDisplayValue('level', p.level, p.levelOther).toLowerCase().indexOf(f.level) === -1) return false;
+                if (f.major && getDisplayValue('major', p.major, p.majorOther).toLowerCase().indexOf(f.major) === -1) return false;
+                if (f.company && getDisplayValue('company', p.company, p.companyOther).toLowerCase().indexOf(f.company) === -1) return false;
+                if (f.socialSecurity && p.socialSecurity !== f.socialSecurity) return false;
+                return true;
+            });
+            refreshQueryTable(queryResults);
+        }
+
+        function clearAdvancedFilter() {
+            ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+            ['f_category_custom','f_position_custom','f_level_custom','f_major_custom','f_company_custom'].forEach(id => { const el=document.getElementById(id); if(el) { el.disabled=true; el.value=''; } });
+            queryResults = []; refreshQueryTable(allData);
+        }
+
+        function performQuickSearch() {
+            const kw = document.getElementById('quickSearch').value.trim().toLowerCase();
+            if (!kw) { queryResults = []; refreshQueryTable(allData); return; }
+            queryResults = allData.filter(p => (p.name&&p.name.includes(kw)) || (p.idcard&&p.idcard.includes(kw)));
+            refreshQueryTable(queryResults);
+        }
+        function clearQuickSearch() { document.getElementById('quickSearch').value=''; queryResults=[]; refreshQueryTable(allData); }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId)?.classList.add('active');
+            document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active');
+            refreshAllViews();
+        }
+
+        document.getElementById('tabNav').addEventListener('click', e => {
+            const btn = e.target.closest('.tab-btn');
+            if (btn) { const tid = btn.dataset.tab; if (tid) switchTab(tid); }
+        });
+        document.getElementById('passwordModal').addEventListener('click', e => { if(e.target===e.currentTarget) closePasswordModal(); });
+        document.getElementById('editModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeEditModal(); });
+        document.getElementById('exportFieldModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeExportFieldModal(); });
+
+        ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.addEventListener('change', performAdvancedFilter); }
+        });
+        ['f_category_custom','f_position_custom','f_level_custom','f_major_custom','f_company_custom'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.addEventListener('input', performAdvancedFilter); }
+        });
+
+        window.performLogin = performLogin; window.logout = logout;
+        window.importFromExcel = importFromExcel; window.openAddPersonModal = openAddPersonModal;
+        window.performQuickSearch = performQuickSearch; window.clearQuickSearch = clearQuickSearch;
+        window.performAdvancedFilter = performAdvancedFilter; window.clearAdvancedFilter = clearAdvancedFilter;
+        window.exportQueryResults = exportQueryResults;
+        window.toggleSelectAllQuery = toggleSelectAllQuery; window.toggleSelectAllData = toggleSelectAllData;
+        window.updateDataSelectAll = updateDataSelectAll;
+        window.handleEditSelected = handleEditSelected; window.handleBatchDelete = handleBatchDelete;
+        window.handleBackupToCloud = handleBackupToCloud; window.handleRestoreFromCloud = handleRestoreFromCloud;
+        window.exportAllData = exportAllData;
+        window.closeEditModal = closeEditModal; window.savePersonFromModal = savePersonFromModal;
+        window.closePasswordModal = closePasswordModal; window.submitPassword = submitPassword;
+        window.closeExportFieldModal = closeExportFieldModal; window.confirmExport = confirmExport;
+        window.downloadDueList = downloadDueList;
+    })();
+    </script>
+</body>
+</html>
