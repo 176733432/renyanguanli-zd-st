@@ -214,7 +214,7 @@
                     </div>
                     <div style="display:flex;gap:10px;">
                         <button class="btn btn-outline btn-sm" onclick="clearAdvancedFilter()">清除筛选</button>
-                        <button class="btn btn-success btn-sm" onclick="exportQueryResults()">导出Excel</button>
+                        <button class="btn btn-success btn-sm" onclick="exportQueryResults()">📥 导出Excel</button>
                     </div>
                 </div>
                 <div class="card">
@@ -350,10 +350,10 @@
     <script>
     (function() {
         const _K1 = atob('WU9OR0hV'), _K2 = atob('MjAwMjAz'), _K3 = atob('MDhaRFNK'), USER_DB_KEY = _K1+_K2+_K3;
-        const _D1 = atob('REFOREFJ'), _D2 = atob('NXpMDIw'), _D3 = atob('M0xZc1k='), DATA_KEY = _D1+_D2+_D3;
+        const LOCAL_KEY = 'DANGAN20020308SYRYSK';
+        const DATA_KEY = LOCAL_KEY;
 
         let currentUser = '', currentSensitivePwd = '', isLoggedIn = false;
-        const LOCAL_KEY = 'DANGAN20020308SYRYSK';
         let allData = [], queryResults = [], passwordCallback = null, editQueue = [], isProcessingQueue = false, pendingExportCallback = null;
 
         const allFields = [
@@ -365,6 +365,7 @@
             { key: 'remarks', label: '备注' }
         ];
 
+        // ========== 自定义输入框逻辑 ==========
         function setupCustomInput(selectId, customInputId) {
             const select = document.getElementById(selectId);
             const customInput = document.getElementById(customInputId);
@@ -427,6 +428,7 @@
             setupCustomInput('f_company', 'f_company_custom');
         }
 
+        // ========== 登录 ==========
         async function performLogin() {
             const user = document.getElementById('loginUser').value.trim();
             const pwd = document.getElementById('loginPwd').value.trim();
@@ -457,6 +459,7 @@
 
         function verifySensitive(input) { if (!currentSensitivePwd) { alert('未配置敏感信息密码'); return false; } return input === currentSensitivePwd; }
 
+        // ========== Excel日期转换 ==========
         function excelSerialToDate(serial) {
             if (typeof serial !== 'number' || isNaN(serial) || serial <= 0) return serial;
             const baseDate = new Date(1899, 11, 30);
@@ -474,34 +477,7 @@
 
         function isExcelSerialNumber(val) { return typeof val === 'number' && val > 40000 && val < 80000; }
 
-        function convertToCloudFormat(data) {
-            return data.map(item => ({
-                "序号": parseInt(item.seq)||0, "姓名": item.name, "身份证": item.idcard,
-                "类别": item.category, "岗位": item.position, "注册号": item.regno,
-                "注册专业": item.major, "有效期": item.validity ? dateToExcelSerial(item.validity) : "",
-                "级别": item.level, "发证单位": item.issuer, "联系电话": item.phone,
-                "冀时办账号": item.jishibanAccount, "冀时办密码": item.jishibanPassword,
-                "社保": item.socialSecurity, "所属公司": item.company, "备注": item.remarks,
-                "类别自定义": item.categoryOther||"", "岗位自定义": item.positionOther||"",
-                "注册专业自定义": item.majorOther||"", "级别自定义": item.levelOther||"",
-                "所属公司自定义": item.companyOther||""
-            }));
-        }
-
-        function convertFromCloudFormat(cloudData) {
-            return cloudData.map(item => ({
-                seq: String(item["序号"]||""), name: item["姓名"]||"", idcard: item["身份证"]||"",
-                category: item["类别"]||"", position: item["岗位"]||"", regno: item["注册号"]||"",
-                major: item["注册专业"]||"", validity: item["有效期"] ? excelSerialToDate(parseInt(item["有效期"])) : "",
-                level: item["级别"]||"", issuer: item["发证单位"]||"", phone: item["联系电话"]||"",
-                jishibanAccount: item["冀时办账号"]||"", jishibanPassword: item["冀时办密码"]||"",
-                socialSecurity: item["社保"]||"", company: item["所属公司"]||"", remarks: item["备注"]||"",
-                categoryOther: item["类别自定义"]||"", positionOther: item["岗位自定义"]||"",
-                majorOther: item["注册专业自定义"]||"", levelOther: item["级别自定义"]||"",
-                companyOther: item["所属公司自定义"]||""
-            }));
-        }
-
+        // ========== Toast提示 ==========
         function showToast(msg, type='info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
@@ -510,25 +486,7 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
-        async function cloudUpdate(data) {
-            const value = JSON.stringify(data);
-            const url = `https://textdb.online/update/?key=${DATA_KEY}&value=${encodeURIComponent(value)}`;
-            try {
-                const resp = await fetch(url, { method: 'POST' });
-                if (resp.ok) { const json = await resp.json().catch(()=>null); if (json && json.status === 1) return { success: true }; }
-                return { success: false, message: '云端返回异常' };
-            } catch(e) { return { success: false, message: e.message }; }
-        }
-
-        async function cloudRead() {
-            try {
-                const resp = await fetch(`https://textdb.online/${DATA_KEY}`);
-                if (!resp.ok) return null;
-                const text = await resp.text();
-                return text ? JSON.parse(text) : null;
-            } catch(e) { return null; }
-        }
-
+        // ========== 本地存储 ==========
         function saveLocal(data) { localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); }
         function loadLocal() { const raw = localStorage.getItem(LOCAL_KEY); if (raw) { try { return JSON.parse(raw); } catch(e){} } return null; }
 
@@ -569,6 +527,7 @@
             checkDueDates();
         }
 
+        // ========== 延期提醒 ==========
         function checkDueDates() {
             const now = new Date();
             const dueList = allData.filter(p => {
@@ -604,6 +563,7 @@
             XLSX.writeFile(wb, `需延期人员_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
+        // ========== 数据模型 ==========
         function createPersonObj(seq, name, idcard, category, position, regno, major, validity, level, issuer, phone, jishibanAccount, jishibanPassword, socialSecurity, company, remarks, categoryOther, positionOther, majorOther, levelOther, companyOther) {
             return { seq: String(seq||''), name, idcard, category, position, regno, major, validity, level, issuer, phone, jishibanAccount, jishibanPassword, socialSecurity, company, remarks, categoryOther, positionOther, majorOther, levelOther, companyOther };
         }
@@ -618,6 +578,7 @@
             return value;
         }
 
+        // ========== 视图刷新 ==========
         function refreshAllViews() {
             refreshDataTable(); refreshQueryTable();
             document.getElementById('dataCountInput').textContent = allData.length;
@@ -679,6 +640,7 @@
         function toggleSelectAllQuery(cb) { document.querySelectorAll('#queryTbody .row-checkbox-query').forEach(c=>c.checked=cb.checked); }
         function getSelectedIndices() { return Array.from(document.querySelectorAll('#dataTbody .row-checkbox-data:checked')).map(cb=>parseInt(cb.dataset.index)).filter(i=>i>=0); }
 
+        // ========== 密码验证 ==========
         function showPasswordModal(cb) { passwordCallback=cb; document.getElementById('passwordModal').style.display='flex'; }
         function closePasswordModal() { document.getElementById('passwordModal').style.display='none'; passwordCallback=null; }
         function submitPassword() {
@@ -688,6 +650,7 @@
             } else { document.getElementById('passwordError').style.display='block'; }
         }
 
+        // ========== 导出功能 ==========
         function buildExportCheckboxes() {
             const container = document.getElementById('exportFieldCheckboxes');
             container.innerHTML = '';
@@ -724,6 +687,7 @@
             });
         }
 
+        // ========== 编辑人员 ==========
         function openEditModal(person, index) {
             document.getElementById('e_index').value = index;
             document.getElementById('e_seq').value = person.seq||'';
@@ -816,36 +780,7 @@
             });
         }
 
-        async function handleBackupToCloud() {
-            const res = await cloudUpdate(convertToCloudFormat(allData));
-            const dateStr = new Date().toISOString().replace(/[-:T]/g,'').slice(0,14);
-            const fields = allFields.map(f => f.key);
-            if (res.success) {
-                exportWithFields(allData, `云端备份-成功-导出-人员档案全部数据${dateStr}.xlsx`, fields);
-                showToast('云端备份成功，已导出Excel','success');
-            } else {
-                exportWithFields(allData, `云端备份-失败-导出-人员档案全部数据${dateStr}.xlsx`, fields);
-                showToast('云端备份失败，已导出Excel','error');
-            }
-        }
-
-        async function handleRestoreFromCloud() {
-            showPasswordModal(async () => {
-                const cloudData = await cloudRead();
-                if (!cloudData || !Array.isArray(cloudData)) { showToast('云端暂无数据或无法访问','info'); return; }
-                const converted = convertFromCloudFormat(cloudData);
-                const localLen = allData.length, cloudLen = converted.length;
-                let diffMsg = `云端数据 ${cloudLen} 条，本地数据 ${localLen} 条。`;
-                if (cloudLen === localLen) diffMsg += '\n条数相同，但内容可能不同。';
-                else if (cloudLen > localLen) diffMsg += `\n云端比本地多 ${cloudLen - localLen} 条。`;
-                else diffMsg += `\n本地比云端多 ${localLen - cloudLen} 条。`;
-                if (confirm(diffMsg + '\n\n确定要用云端数据覆盖本地吗？')) {
-                    allData = converted; saveLocal(allData); refreshAllViews();
-                    showToast('已从云端恢复','success');
-                }
-            });
-        }
-
+        // ========== Excel导入 ==========
         function importFromExcel() {
             showPasswordModal(() => {
                 const input = document.createElement('input');
@@ -881,6 +816,7 @@
             });
         }
 
+        // ========== 筛选功能 ==========
         function hasAdvancedFilter() {
             return ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].some(id => document.getElementById(id)?.value !== '');
         }
@@ -928,6 +864,7 @@
         }
         function clearQuickSearch() { document.getElementById('quickSearch').value=''; queryResults=[]; refreshQueryTable(allData); }
 
+        // ========== 标签页切换 ==========
         function switchTab(tabId) {
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -953,6 +890,126 @@
             if (el) { el.addEventListener('input', performAdvancedFilter); }
         });
 
+        // ========== 云端备份与恢复 ==========
+        function convertToCloudFormat(data) {
+            return data.map(item => ({
+                "序号": parseInt(item.seq)||0, "姓名": item.name, "身份证": item.idcard,
+                "类别": item.category, "岗位": item.position, "注册号": item.regno,
+                "注册专业": item.major, "有效期": item.validity ? dateToExcelSerial(item.validity) : "",
+                "级别": item.level, "发证单位": item.issuer, "联系电话": item.phone,
+                "冀时办账号": item.jishibanAccount, "冀时办密码": item.jishibanPassword,
+                "社保": item.socialSecurity, "所属公司": item.company, "备注": item.remarks,
+                "类别自定义": item.categoryOther||"", "岗位自定义": item.positionOther||"",
+                "注册专业自定义": item.majorOther||"", "级别自定义": item.levelOther||"",
+                "所属公司自定义": item.companyOther||""
+            }));
+        }
+
+        function convertFromCloudFormat(cloudData) {
+            return cloudData.map(item => ({
+                seq: String(item["序号"]||""), name: item["姓名"]||"", idcard: item["身份证"]||"",
+                category: item["类别"]||"", position: item["岗位"]||"", regno: item["注册号"]||"",
+                major: item["注册专业"]||"", validity: item["有效期"] ? excelSerialToDate(parseInt(item["有效期"])) : "",
+                level: item["级别"]||"", issuer: item["发证单位"]||"", phone: item["联系电话"]||"",
+                jishibanAccount: item["冀时办账号"]||"", jishibanPassword: item["冀时办密码"]||"",
+                socialSecurity: item["社保"]||"", company: item["所属公司"]||"", remarks: item["备注"]||"",
+                categoryOther: item["类别自定义"]||"", positionOther: item["岗位自定义"]||"",
+                majorOther: item["注册专业自定义"]||"", levelOther: item["级别自定义"]||"",
+                companyOther: item["所属公司自定义"]||""
+            }));
+        }
+
+        async function cloudUpdateForKey(key, data) {
+            const value = JSON.stringify(data);
+            const url = `https://textdb.online/update/?key=${key}&value=${encodeURIComponent(value)}`;
+            try {
+                const resp = await fetch(url, { method: 'POST' });
+                if (resp.ok) { const json = await resp.json().catch(()=>null); if (json && json.status === 1) return { success: true }; }
+                return { success: false, message: '云端返回异常' };
+            } catch(e) { return { success: false, message: e.message }; }
+        }
+
+        async function cloudReadForKey(key) {
+            try {
+                const resp = await fetch(`https://textdb.online/${key}`);
+                if (!resp.ok) return null;
+                const text = await resp.text();
+                return text ? JSON.parse(text) : null;
+            } catch(e) { return null; }
+        }
+
+        function getNowString() {
+            const now = new Date();
+            return now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '_' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0');
+        }
+
+        async function handleBackupToCloud() {
+            const cloudData = convertToCloudFormat(allData);
+            const fields = allFields.map(f => f.key);
+            // 尝试整体备份
+            const fullRes = await cloudUpdateForKey(DATA_KEY, cloudData);
+            if (fullRes.success) {
+                exportWithFields(allData, '云端备份-成功-人员档案导出'+getNowString()+'.xlsx', fields);
+                showToast('云端备份成功，已导出Excel','success');
+                return;
+            }
+            // 整体失败则分批备份，每10条一组
+            showToast('整体备份失败，尝试分批备份（每10条）...','info');
+            const BATCH = 10;
+            let successAll = true;
+            const totalBatches = Math.ceil(cloudData.length / BATCH);
+            for (let i = 0; i < totalBatches; i++) {
+                const batch = cloudData.slice(i*BATCH, (i+1)*BATCH);
+                const batchKey = `${DATA_KEY}_batch${i}`;
+                const res = await cloudUpdateForKey(batchKey, batch);
+                if (!res.success) { successAll = false; break; }
+            }
+            if (successAll) {
+                await cloudUpdateForKey(DATA_KEY, { batches: totalBatches });
+                exportWithFields(allData, '云端分批备份-成功-人员档案导出'+getNowString()+'.xlsx', fields);
+                showToast(`分批备份成功，共${totalBatches}批，已导出Excel`,'success');
+            } else {
+                exportWithFields(allData, '云端备份-失败-人员档案导出'+getNowString()+'.xlsx', fields);
+                showToast('云端备份失败（含分批），已导出Excel','error');
+            }
+        }
+
+        async function restoreFromCloudWithFallback() {
+            const mainData = await cloudReadForKey(DATA_KEY);
+            if (!mainData) return null;
+            if (Array.isArray(mainData)) return mainData;
+            if (mainData && typeof mainData === 'object' && mainData.batches) {
+                const batches = mainData.batches;
+                let allCloud = [];
+                for (let i = 0; i < batches; i++) {
+                    const batchKey = `${DATA_KEY}_batch${i}`;
+                    const batch = await cloudReadForKey(batchKey);
+                    if (batch) allCloud = allCloud.concat(batch);
+                    else { showToast(`分片${i}读取失败，恢复可能不完整`,'error'); }
+                }
+                return allCloud;
+            }
+            return null;
+        }
+
+        async function handleRestoreFromCloud() {
+            showPasswordModal(async () => {
+                const cloudData = await restoreFromCloudWithFallback();
+                if (!cloudData || !Array.isArray(cloudData) || cloudData.length === 0) { showToast('云端暂无数据或无法访问','info'); return; }
+                const converted = convertFromCloudFormat(cloudData);
+                const localLen = allData.length, cloudLen = converted.length;
+                let diffMsg = `云端数据 ${cloudLen} 条，本地数据 ${localLen} 条。`;
+                if (cloudLen === localLen) diffMsg += '\n条数相同，但内容可能不同。';
+                else if (cloudLen > localLen) diffMsg += `\n云端比本地多 ${cloudLen - localLen} 条。`;
+                else diffMsg += `\n本地比云端多 ${localLen - cloudLen} 条。`;
+                if (confirm(diffMsg + '\n\n确定要用云端数据覆盖本地吗？')) {
+                    allData = converted; saveLocal(allData); refreshAllViews();
+                    showToast('已从云端恢复','success');
+                }
+            });
+        }
+
+        // ========== 暴露全局接口 ==========
         window.performLogin = performLogin; window.logout = logout;
         window.importFromExcel = importFromExcel; window.openAddPersonModal = openAddPersonModal;
         window.performQuickSearch = performQuickSearch; window.clearQuickSearch = clearQuickSearch;
