@@ -73,10 +73,17 @@
         .table-wrapper { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); max-height: 60vh; overflow-y: auto; position: relative; }
         .table-wrapper table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1400px; }
         .table-wrapper thead { position: sticky; top: 0; z-index: 10; }
-        .table-wrapper thead th { background: #f8f9fa; font-weight: 600; color: var(--text); padding: 12px 10px; border-bottom: 2px solid var(--border); white-space: nowrap; text-align: center; font-size: 12px; letter-spacing: 0.3px; }
-        .table-wrapper tbody td { padding: 10px; border-bottom: 1px solid var(--border-light); text-align: center; white-space: nowrap; }
+        .table-wrapper thead th {
+            background: #e0f0ff; font-weight: 700; color: var(--text); padding: 12px 10px;
+            border: 1px solid #b0c4de; white-space: nowrap; text-align: center; font-size: 12px; letter-spacing: 0.3px;
+        }
+        .table-wrapper tbody td {
+            padding: 10px; border: 1px solid #d0d7de; text-align: center; white-space: nowrap;
+        }
         .table-wrapper tbody tr { transition: var(--transition); cursor: default; }
-        .table-wrapper tbody tr:hover { background: #e8f0fe; }
+        .table-wrapper tbody tr.odd-row { background-color: #e8f5e9; }
+        .table-wrapper tbody tr.even-row { background-color: #f5f5f5; }
+        .table-wrapper tbody tr:hover { background: #d2e3fc; }
         .table-wrapper tbody tr.selected { background: #d2e3fc; }
         .table-wrapper .checkbox-cell { width: 40px; text-align: center; }
         .table-wrapper .checkbox-cell input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
@@ -352,6 +359,7 @@
         const _K1 = atob('WU9OR0hV'), _K2 = atob('MjAwMjAz'), _K3 = atob('MDhaRFNK'), USER_DB_KEY = _K1+_K2+_K3;
         const LOCAL_KEY = 'DANGAN20020308SYRYSK';
         const MAIN_CLOUD_KEY = LOCAL_KEY;
+        const ENCRYPT_KEY = LOCAL_KEY;
 
         let currentUser = '', currentSensitivePwd = '', isLoggedIn = false;
         let allData = [], queryResults = [], passwordCallback = null, editQueue = [], isProcessingQueue = false, pendingExportCallback = null;
@@ -365,6 +373,38 @@
             { key: 'remarks', label: '备注' }
         ];
 
+        // ========== 加密解密工具 ==========
+        function encryptData(data) {
+            return CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPT_KEY).toString();
+        }
+        function decryptData(cipherText) {
+            try {
+                const bytes = CryptoJS.AES.decrypt(cipherText, ENCRYPT_KEY);
+                const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+                return decrypted ? JSON.parse(decrypted) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // ========== 本地存储（加密） ==========
+        function saveLocal(data) { localStorage.setItem(LOCAL_KEY, encryptData(data)); }
+        function loadLocal() {
+            const raw = localStorage.getItem(LOCAL_KEY);
+            if (!raw) return null;
+            const decrypted = decryptData(raw);
+            if (decrypted) return decrypted;
+            try {
+                const legacy = JSON.parse(raw);
+                if (Array.isArray(legacy)) {
+                    saveLocal(legacy);
+                    return legacy;
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        // ========== 自定义输入框逻辑 ==========
         function setupCustomInput(selectId, customInputId) {
             const select = document.getElementById(selectId);
             const customInput = document.getElementById(customInputId);
@@ -381,39 +421,24 @@
             select.addEventListener('change', handler);
             handler();
         }
-
         function getCustomInputVal(selectId, customInputId) {
             const select = document.getElementById(selectId);
             const input = document.getElementById(customInputId);
-            if (select && input && select.value === '其他') {
-                return input.value.trim();
-            }
+            if (select && input && select.value === '其他') return input.value.trim();
             return '';
         }
-
         function setCustomInputVal(selectId, customInputId, value, customVal) {
             const select = document.getElementById(selectId);
             const input = document.getElementById(customInputId);
             if (!select || !input) return;
             if (value === '其他' && customVal) {
-                select.value = '其他';
-                input.disabled = false;
-                input.value = customVal;
+                select.value = '其他'; input.disabled = false; input.value = customVal;
             } else {
-                if (select.querySelector(`option[value="${value}"]`)) {
-                    select.value = value;
-                } else {
-                    select.value = '其他';
-                    input.disabled = false;
-                    input.value = value;
-                }
-                if (select.value !== '其他') {
-                    input.disabled = true;
-                    input.value = '';
-                }
+                if (select.querySelector(`option[value="${value}"]`)) select.value = value;
+                else { select.value = '其他'; input.disabled = false; input.value = value; }
+                if (select.value !== '其他') { input.disabled = true; input.value = ''; }
             }
         }
-
         function registerAllCustomInputs() {
             setupCustomInput('e_category', 'e_category_custom');
             setupCustomInput('e_position', 'e_position_custom');
@@ -427,6 +452,7 @@
             setupCustomInput('f_company', 'f_company_custom');
         }
 
+        // ========== 登录 ==========
         async function performLogin() {
             const user = document.getElementById('loginUser').value.trim();
             const pwd = document.getElementById('loginPwd').value.trim();
@@ -447,23 +473,22 @@
                     document.getElementById('currentUserDisplay').textContent = '👤 ' + currentUser;
                     isLoggedIn = true;
                     registerAllCustomInputs();
-                    initFromLocalOnly();
+                    await initDataAfterLogin();
                 } else { errorDiv.textContent = '用户名或密码错误'; errorDiv.style.display = 'block'; }
             } catch(e) { errorDiv.textContent = '登录服务异常'; errorDiv.style.display = 'block'; }
             finally { document.getElementById('loginBtn').disabled = false; document.getElementById('loginPwd').value = ''; }
         }
-
         function logout() { isLoggedIn = false; currentUser = ''; currentSensitivePwd = ''; document.getElementById('loginPanel').style.display = 'flex'; document.getElementById('appPanel').style.display = 'none'; allData = []; queryResults = []; }
 
         function verifySensitive(input) { if (!currentSensitivePwd) { alert('未配置敏感信息密码'); return false; } return input === currentSensitivePwd; }
 
+        // ========== Excel日期转换 ==========
         function excelSerialToDate(serial) {
             if (typeof serial !== 'number' || isNaN(serial) || serial <= 0) return serial;
             const baseDate = new Date(1899, 11, 30);
             const resultDate = new Date(baseDate.getTime() + Math.round(serial) * 86400000);
             return resultDate.getFullYear() + '-' + String(resultDate.getMonth()+1).padStart(2,'0') + '-' + String(resultDate.getDate()).padStart(2,'0');
         }
-
         function dateToExcelSerial(dateStr) {
             if (!dateStr) return '';
             const parts = dateStr.split('-');
@@ -471,9 +496,9 @@
             const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
             return Math.round((d.getTime() - new Date(1899,11,30).getTime()) / 86400000);
         }
-
         function isExcelSerialNumber(val) { return typeof val === 'number' && val > 40000 && val < 80000; }
 
+        // ========== 云端格式转换 ==========
         function convertToCloudFormat(data) {
             return data.map(item => ({
                 "序号": parseInt(item.seq)||0, "姓名": item.name, "身份证": item.idcard,
@@ -487,7 +512,6 @@
                 "所属公司自定义": item.companyOther||""
             }));
         }
-
         function convertFromCloudFormat(cloudData) {
             return cloudData.map(item => ({
                 seq: String(item["序号"]||""), name: item["姓名"]||"", idcard: item["身份证"]||"",
@@ -510,46 +534,51 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
-        function saveLocal(data) { localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); }
-        function loadLocal() { const raw = localStorage.getItem(LOCAL_KEY); if (raw) { try { return JSON.parse(raw); } catch(e){} } return null; }
+        // ========== 初始化数据（登录后调用） ==========
+        async function initDataAfterLogin() {
+            let localData = loadLocal();
+            let cloudData = null;
+            try {
+                const mainInfo = await cloudReadForKey(MAIN_CLOUD_KEY);
+                if (mainInfo && mainInfo.batches) {
+                    const batchCount = mainInfo.batches;
+                    let cloudArray = [];
+                    for (let i = 1; i <= batchCount; i++) {
+                        const batchKey = `${MAIN_CLOUD_KEY}_batch${i}`;
+                        const encStr = await cloudReadForKeyRaw(batchKey);
+                        if (encStr) {
+                            const decrypted = decryptData(encStr);
+                            if (decrypted && Array.isArray(decrypted)) cloudArray = cloudArray.concat(decrypted);
+                        }
+                    }
+                    if (cloudArray.length > 0) cloudData = convertFromCloudFormat(cloudArray);
+                } else if (Array.isArray(mainInfo)) {
+                    cloudData = convertFromCloudFormat(mainInfo);
+                }
+            } catch (e) {}
 
-        function getDefaultData() {
-            return [
-                { seq:'1', name:'韩昌华', idcard:'133001197******36', category:'注册人员', position:'建造师', regno:'冀213060804131', major:'建筑', validity:'2025-06-15', level:'二级', issuer:'', phone:'', jishibanAccount:'', jishibanPassword:'', socialSecurity:'有', company:'正大', remarks:'', categoryOther:'', positionOther:'', majorOther:'', levelOther:'', companyOther:'' },
-                { seq:'2', name:'薛学勇', idcard:'133001197******52', category:'注册人员', position:'建造师', regno:'冀213060804149', major:'建筑', validity:'2027-12-31', level:'二级', issuer:'', phone:'', jishibanAccount:'', jishibanPassword:'', socialSecurity:'有', company:'世拓', remarks:'', categoryOther:'', positionOther:'', majorOther:'', levelOther:'', companyOther:'' },
-                { seq:'3', name:'孟宪奇', idcard:'133026198******19', category:'注册人员', position:'建造师', regno:'冀213060804322', major:'建筑', validity:'2025-05-20', level:'二级', issuer:'', phone:'', jishibanAccount:'', jishibanPassword:'', socialSecurity:'有', company:'正大', remarks:'', categoryOther:'', positionOther:'', majorOther:'', levelOther:'', companyOther:'' },
-                { seq:'4', name:'马晓辉', idcard:'133001197******17', category:'注册人员', position:'建造师', regno:'冀213071796055', major:'建筑', validity:'2026-03-10', level:'二级', issuer:'', phone:'', jishibanAccount:'', jishibanPassword:'', socialSecurity:'有', company:'世拓', remarks:'', categoryOther:'', positionOther:'', majorOther:'', levelOther:'', companyOther:'' },
-                { seq:'5', name:'刘满龙', idcard:'131102197******32', category:'注册人员', position:'建造师', regno:'冀213102002465', major:'建筑', validity:'2025-04-28', level:'二级', issuer:'', phone:'', jishibanAccount:'', jishibanPassword:'', socialSecurity:'有', company:'正大', remarks:'', categoryOther:'', positionOther:'', majorOther:'', levelOther:'', companyOther:'' }
-            ];
-        }
-
-        function initFromLocalOnly() {
-            let data = loadLocal();
-            if (!data || data.length === 0) {
-                data = getDefaultData();
-                saveLocal(data);
-                showToast('已加载默认示例数据', 'info');
+            if (localData && cloudData) {
+                if (cloudData.length > localData.length) {
+                    allData = cloudData;
+                    saveLocal(allData);
+                    showToast('已加载云端数据（条数更多）', 'info');
+                } else {
+                    allData = localData;
+                }
+            } else if (localData) {
+                allData = localData;
+            } else if (cloudData) {
+                allData = cloudData;
+                saveLocal(allData);
+                showToast('已从云端加载数据', 'info');
             } else {
-                data = data.map(row => ({
-                    seq: row.seq || '', name: row.name || '', idcard: row.idcard || '',
-                    category: row.category || '', position: row.position || '',
-                    regno: row.regno || '', major: row.major || '',
-                    validity: row.validity || '', level: row.level || '',
-                    issuer: row.issuer || '', phone: row.phone || '',
-                    jishibanAccount: row.jishibanAccount || '', jishibanPassword: row.jishibanPassword || '',
-                    socialSecurity: row.socialSecurity || '', company: row.company || '',
-                    remarks: row.remarks || '',
-                    categoryOther: row.categoryOther || '', positionOther: row.positionOther || '',
-                    majorOther: row.majorOther || '', levelOther: row.levelOther || '',
-                    companyOther: row.companyOther || ''
-                }));
-                saveLocal(data);
+                allData = [];
             }
-            allData = data;
             refreshAllViews();
             checkDueDates();
         }
 
+        // ========== 延期提醒 ==========
         function checkDueDates() {
             const now = new Date();
             const dueList = allData.filter(p => {
@@ -608,11 +637,11 @@
         }
 
         function refreshDataTable() {
-            const tbody = document.getElementById('dataTbody');
-            tbody.innerHTML = '';
+            const tbody = document.getElementById('dataTbody'); tbody.innerHTML = '';
             allData.forEach((p, i) => {
                 const tr = document.createElement('tr');
                 tr.setAttribute('data-index', i);
+                tr.className = (i % 2 === 0) ? 'even-row' : 'odd-row';
                 tr.innerHTML = `<td class="checkbox-cell"><input type="checkbox" class="row-checkbox-data" data-index="${i}" onclick="event.stopPropagation();updateDataSelectAll();"></td>
                     <td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td>
                     <td>${getDisplayValue('category', p.category, p.categoryOther)}</td>
@@ -630,12 +659,12 @@
 
         function refreshQueryTable(results) {
             const resolved = results !== undefined ? results : (queryResults.length>0 ? queryResults : allData);
-            const tbody = document.getElementById('queryTbody');
-            tbody.innerHTML = '';
+            const tbody = document.getElementById('queryTbody'); tbody.innerHTML = '';
             resolved.forEach((p, idx) => {
                 const orig = allData.indexOf(p);
                 const tr = document.createElement('tr');
                 tr.setAttribute('data-index', orig>=0 ? orig : idx);
+                tr.className = (idx % 2 === 0) ? 'even-row' : 'odd-row';
                 tr.innerHTML = `<td class="checkbox-cell"><input type="checkbox" class="row-checkbox-query" data-index="${orig>=0?orig:idx}"></td>
                     <td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td>
                     <td>${getDisplayValue('category', p.category, p.categoryOther)}</td>
@@ -670,22 +699,15 @@
         }
 
         function buildExportCheckboxes() {
-            const container = document.getElementById('exportFieldCheckboxes');
-            container.innerHTML = '';
-            allFields.forEach(f => {
-                const label = document.createElement('label');
-                label.innerHTML = `<input type="checkbox" value="${f.key}" checked> ${f.label}`;
-                container.appendChild(label);
-            });
+            const container = document.getElementById('exportFieldCheckboxes'); container.innerHTML = '';
+            allFields.forEach(f => { const label = document.createElement('label'); label.innerHTML = `<input type="checkbox" value="${f.key}" checked> ${f.label}`; container.appendChild(label); });
         }
         function getSelectedFields() { return Array.from(document.querySelectorAll('#exportFieldCheckboxes input:checked')).map(cb=>cb.value); }
         function openExportFieldModal(cb) { buildExportCheckboxes(); pendingExportCallback = cb; document.getElementById('exportFieldModal').style.display='flex'; }
         function closeExportFieldModal() { document.getElementById('exportFieldModal').style.display='none'; pendingExportCallback=null; }
         function confirmExport() {
-            const fields = getSelectedFields();
-            if (fields.length===0) { showToast('至少选择一个字段','error'); return; }
-            const cb = pendingExportCallback; closeExportFieldModal();
-            if (cb) cb(fields);
+            const fields = getSelectedFields(); if (fields.length===0) { showToast('至少选择一个字段','error'); return; }
+            const cb = pendingExportCallback; closeExportFieldModal(); if (cb) cb(fields);
         }
         function exportWithFields(dataArray, fileName, fields) {
             if (!dataArray.length) { showToast('无数据','error'); return; }
@@ -797,6 +819,7 @@
             });
         }
 
+        // ========== Excel导入（增量更新：覆盖更新+新增） ==========
         function importFromExcel() {
             showPasswordModal(() => {
                 const input = document.createElement('input');
@@ -821,9 +844,28 @@
                                 String(row[12]||''), String(row[13]||''), String(row[14]||''), String(row[15]||''), '', '', '', '', '');
                         });
                         if (!imported.length) { showToast('无有效数据'); return; }
-                        if (confirm(`追加 ${imported.length} 条？`)) {
-                            allData = [...allData, ...imported]; saveLocal(allData); refreshAllViews();
-                            showToast('导入成功','success');
+
+                        // 统计更新和新增数量
+                        const seqMap = new Map(allData.map((item, idx) => [item.seq, idx]));
+                        let updateCount = 0, addCount = 0;
+                        const newData = [...allData];
+                        imported.forEach(imp => {
+                            const seq = imp.seq;
+                            if (seqMap.has(seq)) {
+                                newData[seqMap.get(seq)] = imp;
+                                updateCount++;
+                            } else {
+                                newData.push(imp);
+                                addCount++;
+                            }
+                        });
+
+                        const msg = `将新增 ${addCount} 条，更新 ${updateCount} 条，是否继续？`;
+                        if (confirm(msg)) {
+                            allData = newData;
+                            saveLocal(allData);
+                            refreshAllViews();
+                            showToast(`导入成功：新增${addCount}条，更新${updateCount}条`, 'success');
                         }
                     };
                     reader.readAsArrayBuffer(file);
@@ -840,9 +882,7 @@
             if (!hasAdvancedFilter()) { queryResults = []; refreshQueryTable(allData); return; }
             const getVal = (selId, customId) => {
                 const sel = document.getElementById(selId);
-                if (sel.value === '其他') {
-                    return document.getElementById(customId).value.trim().toLowerCase();
-                }
+                if (sel.value === '其他') return document.getElementById(customId).value.trim().toLowerCase();
                 return sel.value.toLowerCase();
             };
             const f = {
@@ -904,7 +944,7 @@
             if (el) { el.addEventListener('input', performAdvancedFilter); }
         });
 
-        // ==================== 云端备份与恢复（优化版） ====================
+        // ==================== 云端读写（加密） ====================
         async function cloudUpdateForKey(key, data) {
             const value = JSON.stringify(data);
             const url = `https://textdb.online/update/?key=${key}&value=${encodeURIComponent(value)}`;
@@ -916,11 +956,17 @@
         }
 
         async function cloudReadForKey(key) {
+            const raw = await cloudReadForKeyRaw(key);
+            if (!raw) return null;
+            return decryptData(raw);
+        }
+
+        async function cloudReadForKeyRaw(key) {
             try {
                 const resp = await fetch(`https://textdb.online/${key}`);
                 if (!resp.ok) return null;
                 const text = await resp.text();
-                return text ? JSON.parse(text) : null;
+                return text || null;
             } catch(e) { return null; }
         }
 
@@ -944,74 +990,64 @@
             const totalItems = cloudArray.length;
             if (totalItems === 0) { showToast('没有数据需要备份','info'); return; }
 
-            // 分组：每组JSON字符串长度不超过6000字符
             const batches = [];
             let startIdx = 0;
             while (startIdx < totalItems) {
                 let endIdx = startIdx + 1;
                 let batchSlice = cloudArray.slice(startIdx, endIdx);
-                let jsonStr = JSON.stringify(batchSlice);
-                // 逐渐增加条数，直到超出6000字符，然后回退一条
+                let encStr = encryptData(batchSlice);
                 while (endIdx < totalItems) {
                     const nextSlice = cloudArray.slice(startIdx, endIdx + 1);
-                    const nextJson = JSON.stringify(nextSlice);
-                    if (nextJson.length <= 6000) {
+                    const nextEnc = encryptData(nextSlice);
+                    if (nextEnc.length <= 6000) {
                         endIdx++;
                         batchSlice = nextSlice;
-                        jsonStr = nextJson;
-                    } else {
-                        break;
-                    }
+                        encStr = nextEnc;
+                    } else break;
                 }
-                // 如果单条就超出了6000字符，则强制作为一组
-                if (jsonStr.length > 6000 && endIdx === startIdx + 1) {
-                    batches.push({ data: batchSlice, json: jsonStr });
+                if (encStr.length > 6000 && endIdx === startIdx + 1) {
+                    batches.push({ data: batchSlice, enc: encStr });
                     startIdx = endIdx;
                     continue;
                 }
-                batches.push({ data: batchSlice, json: jsonStr });
+                batches.push({ data: batchSlice, enc: encStr });
                 startIdx = endIdx;
             }
 
             const batchCount = batches.length;
-            // 依次写入分片
             for (let i = 0; i < batchCount; i++) {
                 const batchKey = `${MAIN_CLOUD_KEY}_batch${i+1}`;
-                const currentJson = batches[i].json;
-                // 读取现有数据
-                const existing = await cloudReadForKey(batchKey);
-                if (existing) {
-                    const existingJson = JSON.stringify(existing);
-                    if (existingJson === currentJson) {
-                        continue; // 内容相同，跳过
-                    }
-                }
-                // 写入
-                const res = await cloudUpdateForKey(batchKey, batches[i].data);
+                const currentEnc = batches[i].enc;
+                const existingEnc = await cloudReadForKeyRaw(batchKey);
+                if (existingEnc === currentEnc) continue;
+                const res = await cloudUpdateForKeyRaw(batchKey, currentEnc);
                 if (!res.success) {
                     showToast(`备份分片${i+1}失败，操作中止`,'error');
                     return;
                 }
             }
 
-            // 更新主KEY信息
             const mainInfoRes = await cloudUpdateForKey(MAIN_CLOUD_KEY, { batches: batchCount });
-            if (!mainInfoRes.success) {
-                showToast('主KEY更新失败，但分片已保存，请稍后重试','warning');
-            }
+            if (!mainInfoRes.success) showToast('主KEY更新失败，但分片已保存','warning');
 
-            // 导出Excel备份
             const fields = allFields.map(f => f.key);
             exportWithFields(allData, '云端备份-人员档案'+getNowString()+'.xlsx', fields);
             showToast(`备份成功，共${batchCount}个分片，${totalItems}条数据`,'success');
         }
 
+        async function cloudUpdateForKeyRaw(key, rawString) {
+            const url = `https://textdb.online/update/?key=${key}&value=${encodeURIComponent(rawString)}`;
+            try {
+                const resp = await fetch(url, { method: 'POST' });
+                if (resp.ok) { const json = await resp.json().catch(()=>null); if (json && json.status === 1) return { success: true }; }
+                return { success: false, message: '云端返回异常' };
+            } catch(e) { return { success: false, message: e.message }; }
+        }
+
         async function handleRestoreFromCloud() {
             showPasswordModal(async () => {
-                // 读取主KEY
                 const mainInfo = await cloudReadForKey(MAIN_CLOUD_KEY);
                 if (!mainInfo || !mainInfo.batches) {
-                    // 兼容旧格式：直接读取主KEY作为数组
                     const legacyData = await cloudReadForKey(MAIN_CLOUD_KEY);
                     if (Array.isArray(legacyData)) {
                         const converted = convertFromCloudFormat(legacyData);
@@ -1021,61 +1057,38 @@
                     showToast('云端暂无备份数据','info');
                     return;
                 }
-
                 const batchCount = mainInfo.batches;
                 let cloudArray = [];
                 for (let i = 1; i <= batchCount; i++) {
                     const batchKey = `${MAIN_CLOUD_KEY}_batch${i}`;
-                    const batch = await cloudReadForKey(batchKey);
-                    if (batch && Array.isArray(batch)) {
-                        cloudArray = cloudArray.concat(batch);
-                    } else {
-                        showToast(`分片${i}读取失败，恢复可能不完整`,'error');
-                    }
+                    const decrypted = await cloudReadForKey(batchKey);
+                    if (decrypted && Array.isArray(decrypted)) cloudArray = cloudArray.concat(decrypted);
+                    else showToast(`分片${i}读取失败`,'error');
                 }
-                if (cloudArray.length === 0) {
-                    showToast('云端数据为空','info');
-                    return;
-                }
+                if (cloudArray.length === 0) { showToast('云端数据为空','info'); return; }
                 const convertedData = convertFromCloudFormat(cloudArray);
                 await applyCloudRestore(convertedData);
             });
         }
 
         async function applyCloudRestore(cloudData) {
-            // 对比本地数据，只覆盖不一致的部分，保留本地独有的数据
             const localMap = new Map();
-            allData.forEach((item, idx) => {
-                localMap.set(item.seq, { index: idx, data: item });
-            });
-
-            let replaceCount = 0;
-            let addCount = 0;
-            let skipCount = 0;
-
+            allData.forEach((item, idx) => localMap.set(item.seq, { index: idx, data: item }));
+            let replaceCount = 0, addCount = 0, skipCount = 0;
             for (let cloudItem of cloudData) {
                 const seq = cloudItem.seq;
                 if (localMap.has(seq)) {
                     const localEntry = localMap.get(seq);
-                    if (deepEqual(localEntry.data, cloudItem)) {
-                        skipCount++;
-                    } else {
-                        allData[localEntry.index] = cloudItem;
-                        replaceCount++;
-                    }
-                } else {
-                    allData.push(cloudItem);
-                    addCount++;
-                }
+                    if (deepEqual(localEntry.data, cloudItem)) skipCount++;
+                    else { allData[localEntry.index] = cloudItem; replaceCount++; }
+                } else { allData.push(cloudItem); addCount++; }
             }
-
             saveLocal(allData);
             refreshAllViews();
-            const totalCloud = cloudData.length;
-            let msg = `从云端恢复了 ${totalCloud} 条数据。`;
+            let msg = `从云端恢复了 ${cloudData.length} 条数据。`;
             if (replaceCount > 0) msg += ` 更新 ${replaceCount} 条。`;
             if (addCount > 0) msg += ` 新增 ${addCount} 条。`;
-            if (skipCount > 0) msg += ` 跳过 ${skipCount} 条（内容一致）。`;
+            if (skipCount > 0) msg += ` 跳过 ${skipCount} 条。`;
             showToast(msg, 'success');
         }
 
