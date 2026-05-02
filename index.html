@@ -76,6 +76,17 @@
         .table-wrapper thead th {
             background: #e0f0ff; font-weight: 700; color: var(--text); padding: 12px 10px;
             border: 1px solid #b0c4de; white-space: nowrap; text-align: center; font-size: 12px; letter-spacing: 0.3px;
+            cursor: pointer; user-select: none;
+        }
+        .table-wrapper thead th:hover { background: #c8dff5; }
+        .table-wrapper thead th.sortable::after {
+            content: ' ⇅'; font-size: 10px; opacity: 0.3; margin-left: 2px;
+        }
+        .table-wrapper thead th.sorted-asc::after {
+            content: ' ▲'; opacity: 1; color: var(--primary);
+        }
+        .table-wrapper thead th.sorted-desc::after {
+            content: ' ▼'; opacity: 1; color: var(--primary);
         }
         .table-wrapper tbody td {
             padding: 10px; border: 1px solid #d0d7de; text-align: center; white-space: nowrap;
@@ -229,7 +240,12 @@
                     <div class="table-wrapper" id="queryTableWrapper" style="max-height:50vh;">
                         <table id="queryTable">
                             <thead><tr><th class="checkbox-cell"><input type="checkbox" id="querySelectAll" onchange="toggleSelectAllQuery(this)"></th>
-                            <th>序号</th><th>姓名</th><th>身份证</th><th>类别</th><th>岗位</th><th>注册号</th><th>注册专业</th><th>有效期</th><th>级别</th><th>发证单位</th><th>联系电话</th><th>冀时办账号</th><th>冀时办密码</th><th>社保</th><th>所属公司</th><th>备注</th></tr></thead>
+                            <th data-sort-key="seq">序号</th><th data-sort-key="name">姓名</th><th data-sort-key="idcard">身份证</th>
+                            <th data-sort-key="category">类别</th><th data-sort-key="position">岗位</th><th data-sort-key="regno">注册号</th>
+                            <th data-sort-key="major">注册专业</th><th data-sort-key="validity">有效期</th><th data-sort-key="level">级别</th>
+                            <th data-sort-key="issuer">发证单位</th><th data-sort-key="phone">联系电话</th><th data-sort-key="jishibanAccount">冀时办账号</th>
+                            <th data-sort-key="jishibanPassword">冀时办密码</th><th data-sort-key="socialSecurity">社保</th><th data-sort-key="company">所属公司</th>
+                            <th data-sort-key="remarks">备注</th></tr></thead>
                             <tbody id="queryTbody"></tbody>
                         </table>
                     </div>
@@ -253,7 +269,12 @@
                     <div class="table-wrapper" id="dataTableWrapper" style="max-height:55vh;">
                         <table id="dataTable">
                             <thead><tr><th class="checkbox-cell"><input type="checkbox" id="dataSelectAll" onchange="toggleSelectAllData(this)"></th>
-                            <th>序号</th><th>姓名</th><th>身份证</th><th>类别</th><th>岗位</th><th>注册号</th><th>注册专业</th><th>有效期</th><th>级别</th><th>发证单位</th><th>联系电话</th><th>冀时办账号</th><th>冀时办密码</th><th>社保</th><th>所属公司</th><th>备注</th></tr></thead>
+                            <th data-sort-key="seq">序号</th><th data-sort-key="name">姓名</th><th data-sort-key="idcard">身份证</th>
+                            <th data-sort-key="category">类别</th><th data-sort-key="position">岗位</th><th data-sort-key="regno">注册号</th>
+                            <th data-sort-key="major">注册专业</th><th data-sort-key="validity">有效期</th><th data-sort-key="level">级别</th>
+                            <th data-sort-key="issuer">发证单位</th><th data-sort-key="phone">联系电话</th><th data-sort-key="jishibanAccount">冀时办账号</th>
+                            <th data-sort-key="jishibanPassword">冀时办密码</th><th data-sort-key="socialSecurity">社保</th><th data-sort-key="company">所属公司</th>
+                            <th data-sort-key="remarks">备注</th></tr></thead>
                             <tbody id="dataTbody"></tbody>
                         </table>
                     </div>
@@ -364,6 +385,10 @@
         let currentUser = '', currentSensitivePwd = '', isLoggedIn = false;
         let allData = [], queryResults = [], passwordCallback = null, editQueue = [], isProcessingQueue = false, pendingExportCallback = null;
 
+        // 排序状态
+        let dataSortKey = null, dataSortAsc = true;
+        let querySortKey = null, querySortAsc = true;
+
         const allFields = [
             { key: 'seq', label: '序号' }, { key: 'name', label: '姓名' }, { key: 'idcard', label: '身份证' },
             { key: 'category', label: '类别' }, { key: 'position', label: '岗位' }, { key: 'regno', label: '注册号' },
@@ -373,107 +398,59 @@
             { key: 'remarks', label: '备注' }
         ];
 
-        // ========== 加密解密工具 ==========
-        function encryptData(data) {
-            return CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPT_KEY).toString();
-        }
+        // ========== 加密解密 ==========
+        function encryptData(data) { return CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPT_KEY).toString(); }
         function decryptData(cipherText) {
-            try {
-                const bytes = CryptoJS.AES.decrypt(cipherText, ENCRYPT_KEY);
-                const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-                return decrypted ? JSON.parse(decrypted) : null;
-            } catch (e) {
-                return null;
-            }
+            try { const bytes = CryptoJS.AES.decrypt(cipherText, ENCRYPT_KEY); const decrypted = bytes.toString(CryptoJS.enc.Utf8); return decrypted ? JSON.parse(decrypted) : null; }
+            catch(e) { return null; }
         }
 
-        // ========== 本地存储（加密） ==========
+        // ========== 本地存储 ==========
         function saveLocal(data) { localStorage.setItem(LOCAL_KEY, encryptData(data)); }
         function loadLocal() {
             const raw = localStorage.getItem(LOCAL_KEY);
             if (!raw) return null;
             const decrypted = decryptData(raw);
             if (decrypted) return decrypted;
-            try {
-                const legacy = JSON.parse(raw);
-                if (Array.isArray(legacy)) {
-                    saveLocal(legacy);
-                    return legacy;
-                }
-            } catch (e) {}
+            try { const legacy = JSON.parse(raw); if (Array.isArray(legacy)) { saveLocal(legacy); return legacy; } } catch(e) {}
             return null;
         }
 
-        // ========== 自定义输入框逻辑 ==========
+        // ========== 自定义输入 ==========
         function setupCustomInput(selectId, customInputId) {
-            const select = document.getElementById(selectId);
-            const customInput = document.getElementById(customInputId);
+            const select = document.getElementById(selectId), customInput = document.getElementById(customInputId);
             if (!select || !customInput) return;
-            const handler = function() {
-                if (select.value === '其他') {
-                    customInput.disabled = false;
-                    customInput.focus();
-                } else {
-                    customInput.disabled = true;
-                    customInput.value = '';
-                }
-            };
-            select.addEventListener('change', handler);
-            handler();
+            const handler = function() { if (select.value === '其他') { customInput.disabled = false; customInput.focus(); } else { customInput.disabled = true; customInput.value = ''; } };
+            select.addEventListener('change', handler); handler();
         }
-        function getCustomInputVal(selectId, customInputId) {
-            const select = document.getElementById(selectId);
-            const input = document.getElementById(customInputId);
-            if (select && input && select.value === '其他') return input.value.trim();
-            return '';
-        }
+        function getCustomInputVal(selectId, customInputId) { const select = document.getElementById(selectId), input = document.getElementById(customInputId); if (select && input && select.value === '其他') return input.value.trim(); return ''; }
         function setCustomInputVal(selectId, customInputId, value, customVal) {
-            const select = document.getElementById(selectId);
-            const input = document.getElementById(customInputId);
+            const select = document.getElementById(selectId), input = document.getElementById(customInputId);
             if (!select || !input) return;
-            if (value === '其他' && customVal) {
-                select.value = '其他'; input.disabled = false; input.value = customVal;
-            } else {
-                if (select.querySelector(`option[value="${value}"]`)) select.value = value;
-                else { select.value = '其他'; input.disabled = false; input.value = value; }
-                if (select.value !== '其他') { input.disabled = true; input.value = ''; }
-            }
+            if (value === '其他' && customVal) { select.value = '其他'; input.disabled = false; input.value = customVal; }
+            else { if (select.querySelector(`option[value="${value}"]`)) select.value = value; else { select.value = '其他'; input.disabled = false; input.value = value; } if (select.value !== '其他') { input.disabled = true; input.value = ''; } }
         }
         function registerAllCustomInputs() {
-            setupCustomInput('e_category', 'e_category_custom');
-            setupCustomInput('e_position', 'e_position_custom');
-            setupCustomInput('e_major', 'e_major_custom');
-            setupCustomInput('e_level', 'e_level_custom');
-            setupCustomInput('e_company', 'e_company_custom');
-            setupCustomInput('f_category', 'f_category_custom');
-            setupCustomInput('f_position', 'f_position_custom');
-            setupCustomInput('f_major', 'f_major_custom');
-            setupCustomInput('f_level', 'f_level_custom');
-            setupCustomInput('f_company', 'f_company_custom');
+            setupCustomInput('e_category','e_category_custom'); setupCustomInput('e_position','e_position_custom'); setupCustomInput('e_major','e_major_custom');
+            setupCustomInput('e_level','e_level_custom'); setupCustomInput('e_company','e_company_custom'); setupCustomInput('f_category','f_category_custom');
+            setupCustomInput('f_position','f_position_custom'); setupCustomInput('f_major','f_major_custom'); setupCustomInput('f_level','f_level_custom');
+            setupCustomInput('f_company','f_company_custom');
         }
 
         // ========== 登录 ==========
         async function performLogin() {
-            const user = document.getElementById('loginUser').value.trim();
-            const pwd = document.getElementById('loginPwd').value.trim();
-            const errorDiv = document.getElementById('loginError');
+            const user = document.getElementById('loginUser').value.trim(), pwd = document.getElementById('loginPwd').value.trim(), errorDiv = document.getElementById('loginError');
             if (!user || !pwd) { errorDiv.textContent = '用户名和密码不能为空'; errorDiv.style.display = 'block'; return; }
             document.getElementById('loginBtn').disabled = true;
             try {
-                const resp = await fetch(`https://textdb.online/${USER_DB_KEY}`);
-                if (!resp.ok) throw new Error('网络错误');
-                const text = await resp.text();
-                if (!text) { errorDiv.textContent = '用户库不存在'; errorDiv.style.display = 'block'; return; }
-                const users = JSON.parse(text);
-                const found = users.find(u => u.user === user && u.pwd === pwd);
+                const resp = await fetch(`https://textdb.online/${USER_DB_KEY}`); if (!resp.ok) throw new Error('网络错误');
+                const text = await resp.text(); if (!text) { errorDiv.textContent = '用户库不存在'; errorDiv.style.display = 'block'; return; }
+                const users = JSON.parse(text); const found = users.find(u => u.user === user && u.pwd === pwd);
                 if (found) {
                     currentUser = user; currentSensitivePwd = found.sensitivePwd || '';
-                    document.getElementById('loginPanel').style.display = 'none';
-                    document.getElementById('appPanel').style.display = 'block';
-                    document.getElementById('currentUserDisplay').textContent = '👤 ' + currentUser;
-                    isLoggedIn = true;
-                    registerAllCustomInputs();
-                    await initDataAfterLogin();
+                    document.getElementById('loginPanel').style.display = 'none'; document.getElementById('appPanel').style.display = 'block';
+                    document.getElementById('currentUserDisplay').textContent = '👤 ' + currentUser; isLoggedIn = true;
+                    registerAllCustomInputs(); await initDataAfterLogin();
                 } else { errorDiv.textContent = '用户名或密码错误'; errorDiv.style.display = 'block'; }
             } catch(e) { errorDiv.textContent = '登录服务异常'; errorDiv.style.display = 'block'; }
             finally { document.getElementById('loginBtn').disabled = false; document.getElementById('loginPwd').value = ''; }
@@ -483,149 +460,70 @@
         function verifySensitive(input) { if (!currentSensitivePwd) { alert('未配置敏感信息密码'); return false; } return input === currentSensitivePwd; }
 
         // ========== Excel日期转换 ==========
-        function excelSerialToDate(serial) {
-            if (typeof serial !== 'number' || isNaN(serial) || serial <= 0) return serial;
-            const baseDate = new Date(1899, 11, 30);
-            const resultDate = new Date(baseDate.getTime() + Math.round(serial) * 86400000);
-            return resultDate.getFullYear() + '-' + String(resultDate.getMonth()+1).padStart(2,'0') + '-' + String(resultDate.getDate()).padStart(2,'0');
-        }
-        function dateToExcelSerial(dateStr) {
-            if (!dateStr) return '';
-            const parts = dateStr.split('-');
-            if (parts.length !== 3) return dateStr;
-            const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
-            return Math.round((d.getTime() - new Date(1899,11,30).getTime()) / 86400000);
-        }
+        function excelSerialToDate(serial) { if (typeof serial !== 'number' || isNaN(serial) || serial <= 0) return serial; const baseDate = new Date(1899,11,30); const resultDate = new Date(baseDate.getTime() + Math.round(serial)*86400000); return resultDate.getFullYear()+'-'+String(resultDate.getMonth()+1).padStart(2,'0')+'-'+String(resultDate.getDate()).padStart(2,'0'); }
+        function dateToExcelSerial(dateStr) { if (!dateStr) return ''; const parts = dateStr.split('-'); if (parts.length !== 3) return dateStr; const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2])); return Math.round((d.getTime() - new Date(1899,11,30).getTime()) / 86400000); }
         function isExcelSerialNumber(val) { return typeof val === 'number' && val > 40000 && val < 80000; }
 
-        // ========== 云端格式转换 ==========
-        function convertToCloudFormat(data) {
-            return data.map(item => ({
-                "序号": parseInt(item.seq)||0, "姓名": item.name, "身份证": item.idcard,
-                "类别": item.category, "岗位": item.position, "注册号": item.regno,
-                "注册专业": item.major, "有效期": item.validity ? dateToExcelSerial(item.validity) : "",
-                "级别": item.level, "发证单位": item.issuer, "联系电话": item.phone,
-                "冀时办账号": item.jishibanAccount, "冀时办密码": item.jishibanPassword,
-                "社保": item.socialSecurity, "所属公司": item.company, "备注": item.remarks,
-                "类别自定义": item.categoryOther||"", "岗位自定义": item.positionOther||"",
-                "注册专业自定义": item.majorOther||"", "级别自定义": item.levelOther||"",
-                "所属公司自定义": item.companyOther||""
-            }));
-        }
-        function convertFromCloudFormat(cloudData) {
-            return cloudData.map(item => ({
-                seq: String(item["序号"]||""), name: item["姓名"]||"", idcard: item["身份证"]||"",
-                category: item["类别"]||"", position: item["岗位"]||"", regno: item["注册号"]||"",
-                major: item["注册专业"]||"", validity: item["有效期"] ? excelSerialToDate(parseInt(item["有效期"])) : "",
-                level: item["级别"]||"", issuer: item["发证单位"]||"", phone: item["联系电话"]||"",
-                jishibanAccount: item["冀时办账号"]||"", jishibanPassword: item["冀时办密码"]||"",
-                socialSecurity: item["社保"]||"", company: item["所属公司"]||"", remarks: item["备注"]||"",
-                categoryOther: item["类别自定义"]||"", positionOther: item["岗位自定义"]||"",
-                majorOther: item["注册专业自定义"]||"", levelOther: item["级别自定义"]||"",
-                companyOther: item["所属公司自定义"]||""
-            }));
-        }
+        // ========== 云端格式 ==========
+        function convertToCloudFormat(data) { return data.map(item => ({ "序号": parseInt(item.seq)||0, "姓名": item.name, "身份证": item.idcard, "类别": item.category, "岗位": item.position, "注册号": item.regno, "注册专业": item.major, "有效期": item.validity ? dateToExcelSerial(item.validity) : "", "级别": item.level, "发证单位": item.issuer, "联系电话": item.phone, "冀时办账号": item.jishibanAccount, "冀时办密码": item.jishibanPassword, "社保": item.socialSecurity, "所属公司": item.company, "备注": item.remarks, "类别自定义": item.categoryOther||"", "岗位自定义": item.positionOther||"", "注册专业自定义": item.majorOther||"", "级别自定义": item.levelOther||"", "所属公司自定义": item.companyOther||"" })); }
+        function convertFromCloudFormat(cloudData) { return cloudData.map(item => ({ seq: String(item["序号"]||""), name: item["姓名"]||"", idcard: item["身份证"]||"", category: item["类别"]||"", position: item["岗位"]||"", regno: item["注册号"]||"", major: item["注册专业"]||"", validity: item["有效期"] ? excelSerialToDate(parseInt(item["有效期"])) : "", level: item["级别"]||"", issuer: item["发证单位"]||"", phone: item["联系电话"]||"", jishibanAccount: item["冀时办账号"]||"", jishibanPassword: item["冀时办密码"]||"", socialSecurity: item["社保"]||"", company: item["所属公司"]||"", remarks: item["备注"]||"", categoryOther: item["类别自定义"]||"", positionOther: item["岗位自定义"]||"", majorOther: item["注册专业自定义"]||"", levelOther: item["级别自定义"]||"", companyOther: item["所属公司自定义"]||"" })); }
 
-        function showToast(msg, type='info') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            toast.className = 'toast ' + type; toast.textContent = msg;
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
+        function showToast(msg, type='info') { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast '+type; toast.textContent = msg; container.appendChild(toast); setTimeout(() => toast.remove(), 3000); }
 
-        // ========== 初始化数据（登录后调用） ==========
+        // ========== 初始化数据 ==========
         async function initDataAfterLogin() {
-            let localData = loadLocal();
-            let cloudData = null;
+            let localData = loadLocal(); let cloudData = null;
             try {
                 const mainInfo = await cloudReadForKey(MAIN_CLOUD_KEY);
-                if (mainInfo && mainInfo.batches) {
-                    const batchCount = mainInfo.batches;
-                    let cloudArray = [];
-                    for (let i = 1; i <= batchCount; i++) {
-                        const batchKey = `${MAIN_CLOUD_KEY}_batch${i}`;
-                        const encStr = await cloudReadForKeyRaw(batchKey);
-                        if (encStr) {
-                            const decrypted = decryptData(encStr);
-                            if (decrypted && Array.isArray(decrypted)) cloudArray = cloudArray.concat(decrypted);
-                        }
-                    }
-                    if (cloudArray.length > 0) cloudData = convertFromCloudFormat(cloudArray);
-                } else if (Array.isArray(mainInfo)) {
-                    cloudData = convertFromCloudFormat(mainInfo);
-                }
-            } catch (e) {}
-
-            if (localData && cloudData) {
-                if (cloudData.length > localData.length) {
-                    allData = cloudData;
-                    saveLocal(allData);
-                    showToast('已加载云端数据（条数更多）', 'info');
-                } else {
-                    allData = localData;
-                }
-            } else if (localData) {
-                allData = localData;
-            } else if (cloudData) {
-                allData = cloudData;
-                saveLocal(allData);
-                showToast('已从云端加载数据', 'info');
-            } else {
-                allData = [];
-            }
-            refreshAllViews();
-            checkDueDates();
+                if (mainInfo && mainInfo.batches) { const batchCount = mainInfo.batches; let cloudArray = []; for (let i=1; i<=batchCount; i++) { const batchKey = `${MAIN_CLOUD_KEY}_batch${i}`; const encStr = await cloudReadForKeyRaw(batchKey); if (encStr) { const decrypted = decryptData(encStr); if (decrypted && Array.isArray(decrypted)) cloudArray = cloudArray.concat(decrypted); } } if (cloudArray.length>0) cloudData = convertFromCloudFormat(cloudArray); }
+                else if (Array.isArray(mainInfo)) cloudData = convertFromCloudFormat(mainInfo);
+            } catch(e) {}
+            if (localData && cloudData) { if (cloudData.length > localData.length) { allData = cloudData; saveLocal(allData); showToast('已加载云端数据（条数更多）','info'); } else { allData = localData; } }
+            else if (localData) { allData = localData; } else if (cloudData) { allData = cloudData; saveLocal(allData); showToast('已从云端加载数据','info'); } else { allData = []; }
+            refreshAllViews(); checkDueDates();
         }
 
-        // ========== 延期提醒 ==========
         function checkDueDates() {
-            const now = new Date();
-            const dueList = allData.filter(p => {
-                if (!p.validity) return false;
-                const date = new Date(p.validity);
-                if (isNaN(date.getTime())) return false;
-                const diff = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
-                return diff < 50;
-            });
-            if (dueList.length > 0) {
-                document.getElementById('dueTbody').innerHTML = dueList.map(p => `<tr>
-                    <td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td><td>${p.category}</td><td>${p.position}</td>
-                    <td>${p.level}</td><td>${p.major}</td><td>${p.validity}</td><td>${p.jishibanAccount}</td><td>${p.jishibanPassword}</td><td>${p.company}</td></tr>`).join('');
-                document.getElementById('dueModal').style.display = 'flex';
-            }
+            const now = new Date(); const dueList = allData.filter(p => { if (!p.validity) return false; const date = new Date(p.validity); if (isNaN(date.getTime())) return false; const diff = Math.ceil((date - now) / (1000*60*60*24)); return diff < 50; });
+            if (dueList.length > 0) { document.getElementById('dueTbody').innerHTML = dueList.map(p => `<tr><td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td><td>${p.category}</td><td>${p.position}</td><td>${p.level}</td><td>${p.major}</td><td>${p.validity}</td><td>${p.jishibanAccount}</td><td>${p.jishibanPassword}</td><td>${p.company}</td></tr>`).join(''); document.getElementById('dueModal').style.display='flex'; }
         }
-
         function downloadDueList() {
-            const dueList = allData.filter(p => {
-                if (!p.validity) return false;
-                const date = new Date(p.validity);
-                if (isNaN(date.getTime())) return false;
-                const diff = Math.ceil((date - new Date()) / (1000 * 60 * 60 * 24));
-                return diff < 50;
-            });
-            const exportData = dueList.map(p => ({
-                "序号": p.seq, "姓名": p.name, "身份证": p.idcard, "类别": p.category,
-                "岗位": p.position, "级别": p.level, "注册专业": p.major,
-                "有效期": p.validity, "冀时办账号": p.jishibanAccount, "冀时办密码": p.jishibanPassword, "所属公司": p.company
-            }));
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '需延期人员');
-            XLSX.writeFile(wb, `需延期人员_${new Date().toISOString().slice(0,10)}.xlsx`);
+            const dueList = allData.filter(p => { if (!p.validity) return false; const date = new Date(p.validity); if (isNaN(date.getTime())) return false; const diff = Math.ceil((date - new Date()) / (1000*60*60*24)); return diff < 50; });
+            const exportData = dueList.map(p => ({ "序号": p.seq, "姓名": p.name, "身份证": p.idcard, "类别": p.category, "岗位": p.position, "级别": p.level, "注册专业": p.major, "有效期": p.validity, "冀时办账号": p.jishibanAccount, "冀时办密码": p.jishibanPassword, "所属公司": p.company }));
+            const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '需延期人员'); XLSX.writeFile(wb, `需延期人员_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         function createPersonObj(seq, name, idcard, category, position, regno, major, validity, level, issuer, phone, jishibanAccount, jishibanPassword, socialSecurity, company, remarks, categoryOther, positionOther, majorOther, levelOther, companyOther) {
             return { seq: String(seq||''), name, idcard, category, position, regno, major, validity, level, issuer, phone, jishibanAccount, jishibanPassword, socialSecurity, company, remarks, categoryOther, positionOther, majorOther, levelOther, companyOther };
         }
+        function getNextSeq() { if (allData.length === 0) return '1'; return String(Math.max(...allData.map(d => parseInt(d.seq)||0)) + 1); }
+        function getDisplayValue(type, value, customValue) { if (value === '其他' && customValue) return customValue; return value; }
 
-        function getNextSeq() {
-            if (allData.length === 0) return '1';
-            return String(Math.max(...allData.map(d => parseInt(d.seq)||0)) + 1);
+        // ========== 排序逻辑 ==========
+        function getSortValue(obj, key) {
+            if (key === 'seq') { const n = parseInt(obj.seq); return isNaN(n) ? -1 : n; }
+            if (key === 'validity') { if (!obj.validity) return -8640000000000000; const d = new Date(obj.validity); return isNaN(d.getTime()) ? -8640000000000000 : d.getTime(); }
+            if (key === 'maxPrice' || key === 'regno') { const n = parseFloat(obj[key]); return isNaN(n) ? '' : n; }
+            const display = getDisplayValue(key, obj[key], obj[key+'Other'] || '');
+            return display || '';
         }
-
-        function getDisplayValue(type, value, customValue) {
-            if (value === '其他' && customValue) return customValue;
-            return value;
+        function sortData(data, sortKey, asc) {
+            if (!sortKey) return data;
+            return [...data].sort((a, b) => {
+                const valA = getSortValue(a, sortKey), valB = getSortValue(b, sortKey);
+                if (typeof valA === 'number' && typeof valB === 'number') return asc ? valA - valB : valB - valA;
+                const strA = String(valA), strB = String(valB);
+                return asc ? strA.localeCompare(strB, 'zh-CN') : strB.localeCompare(strA, 'zh-CN');
+            });
+        }
+        function applySortIndicators(tableId, sortKey, asc) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            table.querySelectorAll('thead th').forEach(th => { th.classList.remove('sorted-asc','sorted-desc'); });
+            if (sortKey) {
+                const th = table.querySelector(`th[data-sort-key="${sortKey}"]`);
+                if (th) th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+            }
         }
 
         function refreshAllViews() {
@@ -637,12 +535,11 @@
         }
 
         function refreshDataTable() {
+            const sortedData = sortData(allData, dataSortKey, dataSortAsc);
             const tbody = document.getElementById('dataTbody'); tbody.innerHTML = '';
-            allData.forEach((p, i) => {
-                const tr = document.createElement('tr');
-                tr.setAttribute('data-index', i);
-                tr.className = (i % 2 === 0) ? 'even-row' : 'odd-row';
-                tr.innerHTML = `<td class="checkbox-cell"><input type="checkbox" class="row-checkbox-data" data-index="${i}" onclick="event.stopPropagation();updateDataSelectAll();"></td>
+            sortedData.forEach((p, i) => {
+                const tr = document.createElement('tr'); tr.setAttribute('data-index', allData.indexOf(p)); tr.className = (i%2===0) ? 'even-row' : 'odd-row';
+                tr.innerHTML = `<td class="checkbox-cell"><input type="checkbox" class="row-checkbox-data" data-index="${allData.indexOf(p)}" onclick="event.stopPropagation();updateDataSelectAll();"></td>
                     <td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td>
                     <td>${getDisplayValue('category', p.category, p.categoryOther)}</td>
                     <td>${getDisplayValue('position', p.position, p.positionOther)}</td>
@@ -650,21 +547,21 @@
                     <td>${p.validity}</td><td>${getDisplayValue('level', p.level, p.levelOther)}</td>
                     <td>${p.issuer}</td><td>${p.phone}</td><td>${p.jishibanAccount}</td><td>${p.jishibanPassword}</td>
                     <td>${p.socialSecurity}</td><td>${getDisplayValue('company', p.company, p.companyOther)}</td><td>${p.remarks}</td>`;
-                tr.addEventListener('dblclick', () => handleDoubleClickRow(i));
+                tr.addEventListener('dblclick', () => handleDoubleClickRow(allData.indexOf(p)));
                 tr.addEventListener('click', function(e){ if(e.target.tagName==='INPUT') return; const cb = this.querySelector('.row-checkbox-data'); if(cb){ cb.checked = !cb.checked; updateDataSelectAll(); } });
                 tbody.appendChild(tr);
             });
             updateDataSelectAll();
+            applySortIndicators('dataTable', dataSortKey, dataSortAsc);
         }
 
         function refreshQueryTable(results) {
-            const resolved = results !== undefined ? results : (queryResults.length>0 ? queryResults : allData);
+            let resolved = results !== undefined ? results : (queryResults.length>0 ? queryResults : allData);
+            resolved = sortData(resolved, querySortKey, querySortAsc);
             const tbody = document.getElementById('queryTbody'); tbody.innerHTML = '';
             resolved.forEach((p, idx) => {
                 const orig = allData.indexOf(p);
-                const tr = document.createElement('tr');
-                tr.setAttribute('data-index', orig>=0 ? orig : idx);
-                tr.className = (idx % 2 === 0) ? 'even-row' : 'odd-row';
+                const tr = document.createElement('tr'); tr.setAttribute('data-index', orig>=0 ? orig : idx); tr.className = (idx%2===0) ? 'even-row' : 'odd-row';
                 tr.innerHTML = `<td class="checkbox-cell"><input type="checkbox" class="row-checkbox-query" data-index="${orig>=0?orig:idx}"></td>
                     <td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td>
                     <td>${getDisplayValue('category', p.category, p.categoryOther)}</td>
@@ -679,151 +576,107 @@
             });
             document.getElementById('queryCount').textContent = resolved.length;
             document.getElementById('querySelectAll').checked = false;
+            applySortIndicators('queryTable', querySortKey, querySortAsc);
         }
 
-        function updateDataSelectAll() {
-            const cbs = document.querySelectorAll('#dataTbody .row-checkbox-data');
-            document.getElementById('dataSelectAll').checked = cbs.length>0 && Array.from(cbs).every(cb=>cb.checked);
-        }
+        function updateDataSelectAll() { const cbs = document.querySelectorAll('#dataTbody .row-checkbox-data'); document.getElementById('dataSelectAll').checked = cbs.length>0 && Array.from(cbs).every(cb=>cb.checked); }
         function toggleSelectAllData(cb) { document.querySelectorAll('#dataTbody .row-checkbox-data').forEach(c=>c.checked=cb.checked); }
         function toggleSelectAllQuery(cb) { document.querySelectorAll('#queryTbody .row-checkbox-query').forEach(c=>c.checked=cb.checked); }
         function getSelectedIndices() { return Array.from(document.querySelectorAll('#dataTbody .row-checkbox-data:checked')).map(cb=>parseInt(cb.dataset.index)).filter(i=>i>=0); }
 
         function showPasswordModal(cb) { passwordCallback=cb; document.getElementById('passwordModal').style.display='flex'; }
         function closePasswordModal() { document.getElementById('passwordModal').style.display='none'; passwordCallback=null; }
-        function submitPassword() {
-            if (verifySensitive(document.getElementById('passwordInput').value)) {
-                document.getElementById('passwordModal').style.display='none';
-                const cb=passwordCallback; passwordCallback=null; if(cb) cb();
-            } else { document.getElementById('passwordError').style.display='block'; }
-        }
+        function submitPassword() { if (verifySensitive(document.getElementById('passwordInput').value)) { document.getElementById('passwordModal').style.display='none'; const cb=passwordCallback; passwordCallback=null; if(cb) cb(); } else { document.getElementById('passwordError').style.display='block'; } }
 
-        function buildExportCheckboxes() {
-            const container = document.getElementById('exportFieldCheckboxes'); container.innerHTML = '';
-            allFields.forEach(f => { const label = document.createElement('label'); label.innerHTML = `<input type="checkbox" value="${f.key}" checked> ${f.label}`; container.appendChild(label); });
-        }
+        function buildExportCheckboxes() { const container = document.getElementById('exportFieldCheckboxes'); container.innerHTML = ''; allFields.forEach(f => { const label = document.createElement('label'); label.innerHTML = `<input type="checkbox" value="${f.key}" checked> ${f.label}`; container.appendChild(label); }); }
         function getSelectedFields() { return Array.from(document.querySelectorAll('#exportFieldCheckboxes input:checked')).map(cb=>cb.value); }
         function openExportFieldModal(cb) { buildExportCheckboxes(); pendingExportCallback = cb; document.getElementById('exportFieldModal').style.display='flex'; }
         function closeExportFieldModal() { document.getElementById('exportFieldModal').style.display='none'; pendingExportCallback=null; }
-        function confirmExport() {
-            const fields = getSelectedFields(); if (fields.length===0) { showToast('至少选择一个字段','error'); return; }
-            const cb = pendingExportCallback; closeExportFieldModal(); if (cb) cb(fields);
-        }
+        function confirmExport() { const fields = getSelectedFields(); if (fields.length===0) { showToast('至少选择一个字段','error'); return; } const cb = pendingExportCallback; closeExportFieldModal(); if (cb) cb(fields); }
         function exportWithFields(dataArray, fileName, fields) {
             if (!dataArray.length) { showToast('无数据','error'); return; }
             const exportData = dataArray.map(p => fields.map(k => p[k]||''));
             const header = fields.map(k => allFields.find(f=>f.key===k)?.label || k);
-            const ws = XLSX.utils.aoa_to_sheet([header, ...exportData]);
-            ws['!cols'] = header.map(()=>({wch:15}));
-            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '人员数据');
-            XLSX.writeFile(wb, fileName || '导出.xlsx');
+            const ws = XLSX.utils.aoa_to_sheet([header, ...exportData]); ws['!cols'] = header.map(()=>({wch:15}));
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '人员数据'); XLSX.writeFile(wb, fileName || '导出.xlsx');
             showToast('Excel已导出','success');
         }
         function exportAllData() { openExportFieldModal(fields => exportWithFields(allData, '人员数据汇总表.xlsx', fields)); }
-        function exportQueryResults() {
-            openExportFieldModal(fields => {
-                const data = queryResults.length>0 ? queryResults : allData;
-                exportWithFields(data, '查询结果导出.xlsx', fields);
-            });
+        function exportQueryResults() { openExportFieldModal(fields => { const data = queryResults.length>0 ? queryResults : allData; exportWithFields(data, '查询结果导出.xlsx', fields); }); }
+
+        function openEditModal(person, index) { /* ... 同上 ... */ }
+        function closeEditModal() { document.getElementById('editModal').style.display='none'; processEditQueue(); }
+        async function savePersonFromModal() { /* ... 同上 ... */ }
+        function openAddPersonModal() { const np = createPersonObj(getNextSeq(), '', '', '注册人员', '建造师', '', '建筑', '', '二级', '', '', '', '', '有', '正大', '', '', '', '', '', ''); openEditModal(np, -1); }
+        function processEditQueue() { if (editQueue.length>0 && !isProcessingQueue) { isProcessingQueue=true; const ni=editQueue.shift(); if (ni>=0 && ni<allData.length) openEditModal(allData[ni], ni); else processEditQueue(); } else if (editQueue.length===0) isProcessingQueue=false; }
+        function handleEditSelected() { const indices=getSelectedIndices(); if (!indices.length) { showToast('请勾选','error'); return; } showPasswordModal(() => { editQueue=[...indices]; isProcessingQueue=false; processEditQueue(); }); }
+        function handleDoubleClickRow(index) { if (index<0 || index>=allData.length) return; showPasswordModal(() => openEditModal(allData[index], index)); }
+        async function handleBatchDelete() { const indices=getSelectedIndices(); if (!indices.length) { showToast('请勾选','error'); return; } showPasswordModal(async () => { if (confirm(`确定删除 ${indices.length} 条？`)) { indices.sort((a,b)=>b-a).forEach(i => allData.splice(i,1)); saveLocal(allData); refreshAllViews(); showToast('已删除','success'); } }); }
+
+        function importFromExcel() { /* ... 增量更新导入 ... */ }
+
+        function hasAdvancedFilter() { return ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].some(id => document.getElementById(id)?.value !== ''); }
+        function performAdvancedFilter() { /* ... */ }
+        function clearAdvancedFilter() { /* ... */ }
+        function performQuickSearch() { /* ... */ }
+        function clearQuickSearch() { /* ... */ }
+
+        // ========== 排序表头点击处理 ==========
+        function handleTableSortClick(tableId, e) {
+            const th = e.target.closest('th[data-sort-key]');
+            if (!th) return;
+            const key = th.dataset.sortKey;
+            if (tableId === 'dataTable') {
+                if (dataSortKey === key) { dataSortAsc = !dataSortAsc; } else { dataSortKey = key; dataSortAsc = true; }
+                refreshDataTable();
+            } else if (tableId === 'queryTable') {
+                if (querySortKey === key) { querySortAsc = !querySortAsc; } else { querySortKey = key; querySortAsc = true; }
+                refreshQueryTable();
+            }
         }
+
+        document.getElementById('dataTable').addEventListener('click', function(e) { handleTableSortClick('dataTable', e); });
+        document.getElementById('queryTable').addEventListener('click', function(e) { handleTableSortClick('queryTable', e); });
+
+        // 省略其余已存在的函数 (openEditModal, savePersonFromModal, importFromExcel, performAdvancedFilter, clearAdvancedFilter, performQuickSearch, clearQuickSearch, switchTab, 云端备份恢复等)
+        // 为保证完整性，以下粘贴完整函数体
 
         function openEditModal(person, index) {
-            document.getElementById('e_index').value = index;
-            document.getElementById('e_seq').value = person.seq||'';
-            document.getElementById('e_name').value = person.name||'';
+            document.getElementById('e_index').value = index; document.getElementById('e_seq').value = person.seq||''; document.getElementById('e_name').value = person.name||'';
             document.getElementById('e_idcard').value = person.idcard||'';
-            setCustomInputVal('e_category', 'e_category_custom', person.category, person.categoryOther);
-            setCustomInputVal('e_position', 'e_position_custom', person.position, person.positionOther);
-            setCustomInputVal('e_major', 'e_major_custom', person.major, person.majorOther);
-            setCustomInputVal('e_level', 'e_level_custom', person.level, person.levelOther);
-            setCustomInputVal('e_company', 'e_company_custom', person.company, person.companyOther);
-            document.getElementById('e_regno').value = person.regno||'';
-            document.getElementById('e_validity').value = person.validity||'';
-            document.getElementById('e_issuer').value = person.issuer||'';
-            document.getElementById('e_phone').value = person.phone||'';
-            document.getElementById('e_jishibanAccount').value = person.jishibanAccount||'';
-            document.getElementById('e_jishibanPassword').value = person.jishibanPassword||'';
-            document.getElementById('e_socialSecurity').value = person.socialSecurity||'有';
-            document.getElementById('e_remarks').value = person.remarks||'';
-            document.getElementById('editModalTitle').textContent = index>=0?'修改人员信息':'新增人员信息';
+            setCustomInputVal('e_category','e_category_custom',person.category,person.categoryOther);
+            setCustomInputVal('e_position','e_position_custom',person.position,person.positionOther);
+            setCustomInputVal('e_major','e_major_custom',person.major,person.majorOther);
+            setCustomInputVal('e_level','e_level_custom',person.level,person.levelOther);
+            setCustomInputVal('e_company','e_company_custom',person.company,person.companyOther);
+            document.getElementById('e_regno').value = person.regno||''; document.getElementById('e_validity').value = person.validity||'';
+            document.getElementById('e_issuer').value = person.issuer||''; document.getElementById('e_phone').value = person.phone||'';
+            document.getElementById('e_jishibanAccount').value = person.jishibanAccount||''; document.getElementById('e_jishibanPassword').value = person.jishibanPassword||'';
+            document.getElementById('e_socialSecurity').value = person.socialSecurity||'有'; document.getElementById('e_remarks').value = person.remarks||'';
+            document.getElementById('editModalTitle').textContent = index>=0 ? '修改人员信息' : '新增人员信息';
             document.getElementById('editModal').style.display='flex';
         }
-
-        function closeEditModal() { document.getElementById('editModal').style.display='none'; processEditQueue(); }
-
         async function savePersonFromModal() {
             const index = parseInt(document.getElementById('e_index').value);
-            const cat = document.getElementById('e_category').value;
-            const pos = document.getElementById('e_position').value;
-            const maj = document.getElementById('e_major').value;
-            const lev = document.getElementById('e_level').value;
-            const comp = document.getElementById('e_company').value;
+            const cat = document.getElementById('e_category').value, pos = document.getElementById('e_position').value;
+            const maj = document.getElementById('e_major').value, lev = document.getElementById('e_level').value, comp = document.getElementById('e_company').value;
             const person = createPersonObj(
-                document.getElementById('e_seq').value, document.getElementById('e_name').value,
-                document.getElementById('e_idcard').value, cat, pos,
-                document.getElementById('e_regno').value, maj,
-                document.getElementById('e_validity').value, lev,
+                document.getElementById('e_seq').value, document.getElementById('e_name').value, document.getElementById('e_idcard').value, cat, pos,
+                document.getElementById('e_regno').value, maj, document.getElementById('e_validity').value, lev,
                 document.getElementById('e_issuer').value, document.getElementById('e_phone').value,
                 document.getElementById('e_jishibanAccount').value, document.getElementById('e_jishibanPassword').value,
-                document.getElementById('e_socialSecurity').value, comp,
-                document.getElementById('e_remarks').value,
-                getCustomInputVal('e_category', 'e_category_custom'),
-                getCustomInputVal('e_position', 'e_position_custom'),
-                getCustomInputVal('e_major', 'e_major_custom'),
-                getCustomInputVal('e_level', 'e_level_custom'),
-                getCustomInputVal('e_company', 'e_company_custom')
+                document.getElementById('e_socialSecurity').value, comp, document.getElementById('e_remarks').value,
+                getCustomInputVal('e_category','e_category_custom'), getCustomInputVal('e_position','e_position_custom'),
+                getCustomInputVal('e_major','e_major_custom'), getCustomInputVal('e_level','e_level_custom'),
+                getCustomInputVal('e_company','e_company_custom')
             );
             if (!person.name.trim()) { showToast('姓名不能为空','error'); return; }
-            if (index>=0 && index<allData.length) { allData[index] = person; }
-            else { if (!person.seq) person.seq = getNextSeq(); allData.push(person); }
-            saveLocal(allData);
-            showToast(index>=0?'已更新':'已添加','success');
-            refreshAllViews();
-            closeEditModal();
+            if (index>=0 && index<allData.length) { allData[index] = person; } else { if (!person.seq) person.seq = getNextSeq(); allData.push(person); }
+            saveLocal(allData); showToast(index>=0?'已更新':'已添加','success'); refreshAllViews(); closeEditModal();
         }
-
-        function openAddPersonModal() {
-            const np = createPersonObj(getNextSeq(), '', '', '注册人员', '建造师', '', '建筑', '', '二级', '', '', '', '', '有', '正大', '', '', '', '', '', '');
-            openEditModal(np, -1);
-        }
-
-        function processEditQueue() {
-            if (editQueue.length>0 && !isProcessingQueue) {
-                isProcessingQueue = true;
-                const ni = editQueue.shift();
-                if (ni>=0 && ni<allData.length) openEditModal(allData[ni], ni);
-                else processEditQueue();
-            } else if (editQueue.length===0) isProcessingQueue = false;
-        }
-
-        function handleEditSelected() {
-            const indices = getSelectedIndices();
-            if (!indices.length) { showToast('请勾选','error'); return; }
-            showPasswordModal(() => { editQueue = [...indices]; isProcessingQueue = false; processEditQueue(); });
-        }
-        function handleDoubleClickRow(index) {
-            if (index<0 || index>=allData.length) return;
-            showPasswordModal(() => openEditModal(allData[index], index));
-        }
-
-        async function handleBatchDelete() {
-            const indices = getSelectedIndices();
-            if (!indices.length) { showToast('请勾选','error'); return; }
-            showPasswordModal(async () => {
-                if (confirm(`确定删除 ${indices.length} 条？`)) {
-                    indices.sort((a,b)=>b-a).forEach(i => allData.splice(i,1));
-                    saveLocal(allData);
-                    refreshAllViews();
-                    showToast('已删除','success');
-                }
-            });
-        }
-
-        // ========== Excel导入（增量更新：覆盖更新+新增） ==========
         function importFromExcel() {
             showPasswordModal(() => {
-                const input = document.createElement('input');
-                input.type='file'; input.accept='.xlsx,.xls';
+                const input = document.createElement('input'); input.type='file'; input.accept='.xlsx,.xls';
                 input.onchange = function(e) {
                     const file = e.target.files[0]; if(!file) return;
                     const reader = new FileReader();
@@ -844,265 +697,92 @@
                                 String(row[12]||''), String(row[13]||''), String(row[14]||''), String(row[15]||''), '', '', '', '', '');
                         });
                         if (!imported.length) { showToast('无有效数据'); return; }
-
-                        // 统计更新和新增数量
                         const seqMap = new Map(allData.map((item, idx) => [item.seq, idx]));
-                        let updateCount = 0, addCount = 0;
-                        const newData = [...allData];
-                        imported.forEach(imp => {
-                            const seq = imp.seq;
-                            if (seqMap.has(seq)) {
-                                newData[seqMap.get(seq)] = imp;
-                                updateCount++;
-                            } else {
-                                newData.push(imp);
-                                addCount++;
-                            }
-                        });
-
-                        const msg = `将新增 ${addCount} 条，更新 ${updateCount} 条，是否继续？`;
-                        if (confirm(msg)) {
-                            allData = newData;
-                            saveLocal(allData);
-                            refreshAllViews();
-                            showToast(`导入成功：新增${addCount}条，更新${updateCount}条`, 'success');
-                        }
+                        let updateCount=0, addCount=0; const newData = [...allData];
+                        imported.forEach(imp => { const seq = imp.seq; if (seqMap.has(seq)) { newData[seqMap.get(seq)] = imp; updateCount++; } else { newData.push(imp); addCount++; } });
+                        if (confirm(`将新增 ${addCount} 条，更新 ${updateCount} 条，是否继续？`)) { allData = newData; saveLocal(allData); refreshAllViews(); showToast(`导入成功：新增${addCount}条，更新${updateCount}条`,'success'); }
                     };
                     reader.readAsArrayBuffer(file);
                 };
                 input.click();
             });
         }
-
-        function hasAdvancedFilter() {
-            return ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].some(id => document.getElementById(id)?.value !== '');
-        }
-
         function performAdvancedFilter() {
             if (!hasAdvancedFilter()) { queryResults = []; refreshQueryTable(allData); return; }
-            const getVal = (selId, customId) => {
-                const sel = document.getElementById(selId);
-                if (sel.value === '其他') return document.getElementById(customId).value.trim().toLowerCase();
-                return sel.value.toLowerCase();
-            };
-            const f = {
-                category: getVal('f_category', 'f_category_custom'),
-                position: getVal('f_position', 'f_position_custom'),
-                level: getVal('f_level', 'f_level_custom'),
-                major: getVal('f_major', 'f_major_custom'),
-                company: getVal('f_company', 'f_company_custom'),
-                socialSecurity: document.getElementById('f_socialSecurity').value
-            };
+            const getVal = (selId, customId) => { const sel = document.getElementById(selId); if (sel.value === '其他') return document.getElementById(customId).value.trim().toLowerCase(); return sel.value.toLowerCase(); };
+            const f = { category: getVal('f_category','f_category_custom'), position: getVal('f_position','f_position_custom'), level: getVal('f_level','f_level_custom'), major: getVal('f_major','f_major_custom'), company: getVal('f_company','f_company_custom'), socialSecurity: document.getElementById('f_socialSecurity').value };
             queryResults = allData.filter(p => {
-                if (f.category && getDisplayValue('category', p.category, p.categoryOther).toLowerCase().indexOf(f.category) === -1) return false;
-                if (f.position && getDisplayValue('position', p.position, p.positionOther).toLowerCase().indexOf(f.position) === -1) return false;
-                if (f.level && getDisplayValue('level', p.level, p.levelOther).toLowerCase().indexOf(f.level) === -1) return false;
-                if (f.major && getDisplayValue('major', p.major, p.majorOther).toLowerCase().indexOf(f.major) === -1) return false;
-                if (f.company && getDisplayValue('company', p.company, p.companyOther).toLowerCase().indexOf(f.company) === -1) return false;
+                if (f.category && getDisplayValue('category',p.category,p.categoryOther).toLowerCase().indexOf(f.category) === -1) return false;
+                if (f.position && getDisplayValue('position',p.position,p.positionOther).toLowerCase().indexOf(f.position) === -1) return false;
+                if (f.level && getDisplayValue('level',p.level,p.levelOther).toLowerCase().indexOf(f.level) === -1) return false;
+                if (f.major && getDisplayValue('major',p.major,p.majorOther).toLowerCase().indexOf(f.major) === -1) return false;
+                if (f.company && getDisplayValue('company',p.company,p.companyOther).toLowerCase().indexOf(f.company) === -1) return false;
                 if (f.socialSecurity && p.socialSecurity !== f.socialSecurity) return false;
                 return true;
             });
             refreshQueryTable(queryResults);
         }
-
-        function clearAdvancedFilter() {
-            ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-            ['f_category_custom','f_position_custom','f_level_custom','f_major_custom','f_company_custom'].forEach(id => { const el=document.getElementById(id); if(el) { el.disabled=true; el.value=''; } });
-            queryResults = []; refreshQueryTable(allData);
-        }
-
-        function performQuickSearch() {
-            const kw = document.getElementById('quickSearch').value.trim().toLowerCase();
-            if (!kw) { queryResults = []; refreshQueryTable(allData); return; }
-            queryResults = allData.filter(p => (p.name&&p.name.includes(kw)) || (p.idcard&&p.idcard.includes(kw)));
-            refreshQueryTable(queryResults);
-        }
+        function clearAdvancedFilter() { ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; }); ['f_category_custom','f_position_custom','f_level_custom','f_major_custom','f_company_custom'].forEach(id => { const el=document.getElementById(id); if(el) { el.disabled=true; el.value=''; } }); queryResults=[]; refreshQueryTable(allData); }
+        function performQuickSearch() { const kw = document.getElementById('quickSearch').value.trim().toLowerCase(); if (!kw) { queryResults=[]; refreshQueryTable(allData); return; } queryResults = allData.filter(p => (p.name&&p.name.includes(kw)) || (p.idcard&&p.idcard.includes(kw))); refreshQueryTable(queryResults); }
         function clearQuickSearch() { document.getElementById('quickSearch').value=''; queryResults=[]; refreshQueryTable(allData); }
 
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(tabId)?.classList.add('active');
-            document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active');
-            refreshAllViews();
-        }
-
-        document.getElementById('tabNav').addEventListener('click', e => {
-            const btn = e.target.closest('.tab-btn');
-            if (btn) { const tid = btn.dataset.tab; if (tid) switchTab(tid); }
-        });
+        function switchTab(tabId) { document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); document.getElementById(tabId)?.classList.add('active'); document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active'); refreshAllViews(); }
+        document.getElementById('tabNav').addEventListener('click', e => { const btn = e.target.closest('.tab-btn'); if (btn) { const tid = btn.dataset.tab; if (tid) switchTab(tid); } });
         document.getElementById('passwordModal').addEventListener('click', e => { if(e.target===e.currentTarget) closePasswordModal(); });
         document.getElementById('editModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeEditModal(); });
         document.getElementById('exportFieldModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeExportFieldModal(); });
+        ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('change', performAdvancedFilter); });
+        ['f_category_custom','f_position_custom','f_level_custom','f_major_custom','f_company_custom'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', performAdvancedFilter); });
 
-        ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) { el.addEventListener('change', performAdvancedFilter); }
-        });
-        ['f_category_custom','f_position_custom','f_level_custom','f_major_custom','f_company_custom'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) { el.addEventListener('input', performAdvancedFilter); }
-        });
-
-        // ==================== 云端读写（加密） ====================
-        async function cloudUpdateForKey(key, data) {
-            const value = JSON.stringify(data);
-            const url = `https://textdb.online/update/?key=${key}&value=${encodeURIComponent(value)}`;
-            try {
-                const resp = await fetch(url, { method: 'POST' });
-                if (resp.ok) { const json = await resp.json().catch(()=>null); if (json && json.status === 1) return { success: true }; }
-                return { success: false, message: '云端返回异常' };
-            } catch(e) { return { success: false, message: e.message }; }
-        }
-
-        async function cloudReadForKey(key) {
-            const raw = await cloudReadForKeyRaw(key);
-            if (!raw) return null;
-            return decryptData(raw);
-        }
-
-        async function cloudReadForKeyRaw(key) {
-            try {
-                const resp = await fetch(`https://textdb.online/${key}`);
-                if (!resp.ok) return null;
-                const text = await resp.text();
-                return text || null;
-            } catch(e) { return null; }
-        }
-
-        function getNowString() {
-            const now = new Date();
-            return now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '_' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0');
-        }
-
-        function deepEqual(obj1, obj2) {
-            const keys1 = Object.keys(obj1);
-            const keys2 = Object.keys(obj2);
-            if (keys1.length !== keys2.length) return false;
-            for (let key of keys1) {
-                if (obj1[key] !== obj2[key]) return false;
-            }
-            return true;
-        }
-
+        // ==================== 云端备份恢复 ====================
+        async function cloudUpdateForKey(key, data) { const value = JSON.stringify(data); const url = `https://textdb.online/update/?key=${key}&value=${encodeURIComponent(value)}`; try { const resp = await fetch(url, { method: 'POST' }); if (resp.ok) { const json = await resp.json().catch(()=>null); if (json && json.status === 1) return { success: true }; } return { success: false, message: '云端返回异常' }; } catch(e) { return { success: false, message: e.message }; } }
+        async function cloudReadForKey(key) { const raw = await cloudReadForKeyRaw(key); if (!raw) return null; return decryptData(raw); }
+        async function cloudReadForKeyRaw(key) { try { const resp = await fetch(`https://textdb.online/${key}`); if (!resp.ok) return null; const text = await resp.text(); return text || null; } catch(e) { return null; } }
+        function getNowString() { const now = new Date(); return now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0')+String(now.getSeconds()).padStart(2,'0'); }
+        function deepEqual(obj1, obj2) { const keys1 = Object.keys(obj1); const keys2 = Object.keys(obj2); if (keys1.length !== keys2.length) return false; for (let key of keys1) { if (obj1[key] !== obj2[key]) return false; } return true; }
         async function handleBackupToCloud() {
-            const cloudArray = convertToCloudFormat(allData);
-            const totalItems = cloudArray.length;
+            const cloudArray = convertToCloudFormat(allData); const totalItems = cloudArray.length;
             if (totalItems === 0) { showToast('没有数据需要备份','info'); return; }
-
-            const batches = [];
-            let startIdx = 0;
+            const batches = []; let startIdx = 0;
             while (startIdx < totalItems) {
-                let endIdx = startIdx + 1;
-                let batchSlice = cloudArray.slice(startIdx, endIdx);
-                let encStr = encryptData(batchSlice);
-                while (endIdx < totalItems) {
-                    const nextSlice = cloudArray.slice(startIdx, endIdx + 1);
-                    const nextEnc = encryptData(nextSlice);
-                    if (nextEnc.length <= 6000) {
-                        endIdx++;
-                        batchSlice = nextSlice;
-                        encStr = nextEnc;
-                    } else break;
-                }
-                if (encStr.length > 6000 && endIdx === startIdx + 1) {
-                    batches.push({ data: batchSlice, enc: encStr });
-                    startIdx = endIdx;
-                    continue;
-                }
-                batches.push({ data: batchSlice, enc: encStr });
-                startIdx = endIdx;
+                let endIdx = startIdx + 1; let batchSlice = cloudArray.slice(startIdx, endIdx); let encStr = encryptData(batchSlice);
+                while (endIdx < totalItems) { const nextSlice = cloudArray.slice(startIdx, endIdx+1); const nextEnc = encryptData(nextSlice); if (nextEnc.length <= 6000) { endIdx++; batchSlice = nextSlice; encStr = nextEnc; } else break; }
+                if (encStr.length > 6000 && endIdx === startIdx+1) { batches.push({ data: batchSlice, enc: encStr }); startIdx = endIdx; continue; }
+                batches.push({ data: batchSlice, enc: encStr }); startIdx = endIdx;
             }
-
             const batchCount = batches.length;
-            for (let i = 0; i < batchCount; i++) {
-                const batchKey = `${MAIN_CLOUD_KEY}_batch${i+1}`;
-                const currentEnc = batches[i].enc;
-                const existingEnc = await cloudReadForKeyRaw(batchKey);
-                if (existingEnc === currentEnc) continue;
-                const res = await cloudUpdateForKeyRaw(batchKey, currentEnc);
-                if (!res.success) {
-                    showToast(`备份分片${i+1}失败，操作中止`,'error');
-                    return;
-                }
-            }
-
-            const mainInfoRes = await cloudUpdateForKey(MAIN_CLOUD_KEY, { batches: batchCount });
-            if (!mainInfoRes.success) showToast('主KEY更新失败，但分片已保存','warning');
-
-            const fields = allFields.map(f => f.key);
-            exportWithFields(allData, '云端备份-人员档案'+getNowString()+'.xlsx', fields);
+            for (let i=0; i<batchCount; i++) { const batchKey = `${MAIN_CLOUD_KEY}_batch${i+1}`; const currentEnc = batches[i].enc; const existingEnc = await cloudReadForKeyRaw(batchKey); if (existingEnc === currentEnc) continue; const res = await cloudUpdateForKeyRaw(batchKey, currentEnc); if (!res.success) { showToast(`备份分片${i+1}失败，操作中止`,'error'); return; } }
+            const mainInfoRes = await cloudUpdateForKey(MAIN_CLOUD_KEY, { batches: batchCount }); if (!mainInfoRes.success) showToast('主KEY更新失败，但分片已保存','warning');
+            const fields = allFields.map(f=>f.key); exportWithFields(allData, '云端备份-人员档案'+getNowString()+'.xlsx', fields);
             showToast(`备份成功，共${batchCount}个分片，${totalItems}条数据`,'success');
         }
-
-        async function cloudUpdateForKeyRaw(key, rawString) {
-            const url = `https://textdb.online/update/?key=${key}&value=${encodeURIComponent(rawString)}`;
-            try {
-                const resp = await fetch(url, { method: 'POST' });
-                if (resp.ok) { const json = await resp.json().catch(()=>null); if (json && json.status === 1) return { success: true }; }
-                return { success: false, message: '云端返回异常' };
-            } catch(e) { return { success: false, message: e.message }; }
-        }
-
+        async function cloudUpdateForKeyRaw(key, rawString) { const url = `https://textdb.online/update/?key=${key}&value=${encodeURIComponent(rawString)}`; try { const resp = await fetch(url, { method: 'POST' }); if (resp.ok) { const json = await resp.json().catch(()=>null); if (json && json.status === 1) return { success: true }; } return { success: false, message: '云端返回异常' }; } catch(e) { return { success: false, message: e.message }; } }
         async function handleRestoreFromCloud() {
             showPasswordModal(async () => {
                 const mainInfo = await cloudReadForKey(MAIN_CLOUD_KEY);
-                if (!mainInfo || !mainInfo.batches) {
-                    const legacyData = await cloudReadForKey(MAIN_CLOUD_KEY);
-                    if (Array.isArray(legacyData)) {
-                        const converted = convertFromCloudFormat(legacyData);
-                        await applyCloudRestore(converted);
-                        return;
-                    }
-                    showToast('云端暂无备份数据','info');
-                    return;
-                }
-                const batchCount = mainInfo.batches;
-                let cloudArray = [];
-                for (let i = 1; i <= batchCount; i++) {
-                    const batchKey = `${MAIN_CLOUD_KEY}_batch${i}`;
-                    const decrypted = await cloudReadForKey(batchKey);
-                    if (decrypted && Array.isArray(decrypted)) cloudArray = cloudArray.concat(decrypted);
-                    else showToast(`分片${i}读取失败`,'error');
-                }
+                if (!mainInfo || !mainInfo.batches) { const legacyData = await cloudReadForKey(MAIN_CLOUD_KEY); if (Array.isArray(legacyData)) { const converted = convertFromCloudFormat(legacyData); await applyCloudRestore(converted); return; } showToast('云端暂无备份数据','info'); return; }
+                const batchCount = mainInfo.batches; let cloudArray = [];
+                for (let i=1; i<=batchCount; i++) { const batchKey = `${MAIN_CLOUD_KEY}_batch${i}`; const decrypted = await cloudReadForKey(batchKey); if (decrypted && Array.isArray(decrypted)) cloudArray = cloudArray.concat(decrypted); else showToast(`分片${i}读取失败`,'error'); }
                 if (cloudArray.length === 0) { showToast('云端数据为空','info'); return; }
-                const convertedData = convertFromCloudFormat(cloudArray);
-                await applyCloudRestore(convertedData);
+                const convertedData = convertFromCloudFormat(cloudArray); await applyCloudRestore(convertedData);
             });
         }
-
         async function applyCloudRestore(cloudData) {
-            const localMap = new Map();
-            allData.forEach((item, idx) => localMap.set(item.seq, { index: idx, data: item }));
-            let replaceCount = 0, addCount = 0, skipCount = 0;
-            for (let cloudItem of cloudData) {
-                const seq = cloudItem.seq;
-                if (localMap.has(seq)) {
-                    const localEntry = localMap.get(seq);
-                    if (deepEqual(localEntry.data, cloudItem)) skipCount++;
-                    else { allData[localEntry.index] = cloudItem; replaceCount++; }
-                } else { allData.push(cloudItem); addCount++; }
-            }
-            saveLocal(allData);
-            refreshAllViews();
-            let msg = `从云端恢复了 ${cloudData.length} 条数据。`;
-            if (replaceCount > 0) msg += ` 更新 ${replaceCount} 条。`;
-            if (addCount > 0) msg += ` 新增 ${addCount} 条。`;
-            if (skipCount > 0) msg += ` 跳过 ${skipCount} 条。`;
-            showToast(msg, 'success');
+            const localMap = new Map(); allData.forEach((item, idx) => localMap.set(item.seq, { index: idx, data: item }));
+            let replaceCount=0, addCount=0, skipCount=0;
+            for (let cloudItem of cloudData) { const seq = cloudItem.seq; if (localMap.has(seq)) { const localEntry = localMap.get(seq); if (deepEqual(localEntry.data, cloudItem)) skipCount++; else { allData[localEntry.index] = cloudItem; replaceCount++; } } else { allData.push(cloudItem); addCount++; } }
+            saveLocal(allData); refreshAllViews();
+            let msg = `从云端恢复了 ${cloudData.length} 条数据。`; if (replaceCount>0) msg += ` 更新 ${replaceCount} 条。`; if (addCount>0) msg += ` 新增 ${addCount} 条。`; if (skipCount>0) msg += ` 跳过 ${skipCount} 条。`; showToast(msg,'success');
         }
 
         window.performLogin = performLogin; window.logout = logout;
         window.importFromExcel = importFromExcel; window.openAddPersonModal = openAddPersonModal;
         window.performQuickSearch = performQuickSearch; window.clearQuickSearch = clearQuickSearch;
         window.performAdvancedFilter = performAdvancedFilter; window.clearAdvancedFilter = clearAdvancedFilter;
-        window.exportQueryResults = exportQueryResults;
-        window.toggleSelectAllQuery = toggleSelectAllQuery; window.toggleSelectAllData = toggleSelectAllData;
-        window.updateDataSelectAll = updateDataSelectAll;
-        window.handleEditSelected = handleEditSelected; window.handleBatchDelete = handleBatchDelete;
+        window.exportQueryResults = exportQueryResults; window.toggleSelectAllQuery = toggleSelectAllQuery; window.toggleSelectAllData = toggleSelectAllData;
+        window.updateDataSelectAll = updateDataSelectAll; window.handleEditSelected = handleEditSelected; window.handleBatchDelete = handleBatchDelete;
         window.handleBackupToCloud = handleBackupToCloud; window.handleRestoreFromCloud = handleRestoreFromCloud;
-        window.exportAllData = exportAllData;
-        window.closeEditModal = closeEditModal; window.savePersonFromModal = savePersonFromModal;
+        window.exportAllData = exportAllData; window.closeEditModal = closeEditModal; window.savePersonFromModal = savePersonFromModal;
         window.closePasswordModal = closePasswordModal; window.submitPassword = submitPassword;
         window.closeExportFieldModal = closeExportFieldModal; window.confirmExport = confirmExport;
         window.downloadDueList = downloadDueList;
