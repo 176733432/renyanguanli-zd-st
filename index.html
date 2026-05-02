@@ -79,18 +79,10 @@
             cursor: pointer; user-select: none;
         }
         .table-wrapper thead th:hover { background: #c8dff5; }
-        .table-wrapper thead th.sortable::after {
-            content: ' ⇅'; font-size: 10px; opacity: 0.3; margin-left: 2px;
-        }
-        .table-wrapper thead th.sorted-asc::after {
-            content: ' ▲'; opacity: 1; color: var(--primary);
-        }
-        .table-wrapper thead th.sorted-desc::after {
-            content: ' ▼'; opacity: 1; color: var(--primary);
-        }
-        .table-wrapper tbody td {
-            padding: 10px; border: 1px solid #d0d7de; text-align: center; white-space: nowrap;
-        }
+        .table-wrapper thead th.sortable::after { content: ' ⇅'; font-size: 10px; opacity: 0.3; margin-left: 2px; }
+        .table-wrapper thead th.sorted-asc::after { content: ' ▲'; opacity: 1; color: var(--primary); }
+        .table-wrapper thead th.sorted-desc::after { content: ' ▼'; opacity: 1; color: var(--primary); }
+        .table-wrapper tbody td { padding: 10px; border: 1px solid #d0d7de; text-align: center; white-space: nowrap; }
         .table-wrapper tbody tr { transition: var(--transition); cursor: default; }
         .table-wrapper tbody tr.odd-row { background-color: #e8f5e9; }
         .table-wrapper tbody tr.even-row { background-color: #f5f5f5; }
@@ -134,14 +126,8 @@
     <div id="loginPanel" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
         <div class="login-container">
             <h2 style="text-align:center; color:#1e3a5f; margin-bottom:24px;">🔐 用户登录</h2>
-            <div style="margin-bottom: 18px;">
-                <label>用户名</label>
-                <input type="text" id="loginUser" placeholder="请输入用户名" style="width:100%; margin-top:6px; padding:10px; border-radius:20px; border:1px solid #ccc;" onkeyup="if(event.key==='Enter')performLogin()">
-            </div>
-            <div style="margin-bottom: 18px;">
-                <label>密码</label>
-                <input type="password" id="loginPwd" placeholder="请输入密码" style="width:100%; margin-top:6px; padding:10px; border-radius:20px; border:1px solid #ccc;" onkeyup="if(event.key==='Enter')performLogin()">
-            </div>
+            <div style="margin-bottom: 18px;"><label>用户名</label><input type="text" id="loginUser" placeholder="请输入用户名" style="width:100%; margin-top:6px; padding:10px; border-radius:20px; border:1px solid #ccc;" onkeyup="if(event.key==='Enter')performLogin()"></div>
+            <div style="margin-bottom: 18px;"><label>密码</label><input type="password" id="loginPwd" placeholder="请输入密码" style="width:100%; margin-top:6px; padding:10px; border-radius:20px; border:1px solid #ccc;" onkeyup="if(event.key==='Enter')performLogin()"></div>
             <div class="error-msg" id="loginError" style="display:none;"></div>
             <button class="btn btn-primary" style="width:100%;" onclick="performLogin()" id="loginBtn">登录</button>
             <div class="login-divider"><span>或</span></div>
@@ -155,224 +141,48 @@
             <div class="logo"><span class="icon">👥</span> 人员管理系统</div>
             <div class="header-actions">
                 <span id="currentUserDisplay" style="margin-right:16px;"></span>
-                <span class="sync-status" id="syncStatus">
-                    <span class="sync-dot" id="syncDot"></span>
-                    <span id="syncText">本地存储就绪</span>
-                </span>
+                <span class="sync-status" id="syncStatus"><span class="sync-dot" id="syncDot"></span><span id="syncText">本地存储就绪</span></span>
                 <button class="btn btn-sm" onclick="logout()">退出登录</button>
             </div>
         </header>
-
         <nav class="tab-nav" id="tabNav">
             <button class="tab-btn active" data-tab="tab-input">📝 录入</button>
             <button class="tab-btn" data-tab="tab-query">🔍 查询</button>
             <button class="tab-btn" data-tab="tab-data">📊 数据</button>
         </nav>
-
         <div class="main-container">
             <div class="tab-panel active" id="tab-input">
-                <div class="card">
-                    <div class="card-title">📥 数据导入与新增</div>
-                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                        <button class="btn btn-outline" onclick="importFromExcel()">📂 从EXCEL文件导入数据</button>
-                        <button class="btn btn-primary" onclick="openAddPersonModal()">➕ 新增人员</button>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-title">📋 当前数据概览</div>
-                    <p style="font-size:14px;">当前共有 <strong id="dataCountInput" style="color:var(--primary);">0</strong> 条人员记录</p>
-                </div>
+                <div class="card"><div class="card-title">📥 数据导入与新增</div><div style="display:flex;gap:12px;flex-wrap:wrap;"><button class="btn btn-outline" onclick="importFromExcel()">📂 从EXCEL文件导入数据</button><button class="btn btn-primary" onclick="openAddPersonModal()">➕ 新增人员</button></div></div>
+                <div class="card"><div class="card-title">📋 当前数据概览</div><p style="font-size:14px;">当前共有 <strong id="dataCountInput" style="color:var(--primary);">0</strong> 条人员记录</p></div>
             </div>
-
             <div class="tab-panel" id="tab-query">
-                <div class="card">
-                    <div class="card-title">🔍 快速查找</div>
-                    <div class="search-box">
-                        <div class="form-group" style="flex:2;min-width:200px;">
-                            <label>姓名或身份证</label>
-                            <input type="text" id="quickSearch" placeholder="输入姓名或身份证号..." oninput="performQuickSearch()">
-                        </div>
-                        <button class="btn btn-outline btn-sm" onclick="clearQuickSearch()">清除</button>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-title">🔎 高级筛选 (实时生效)</div>
+                <div class="card"><div class="card-title">🔍 快速查找</div><div class="search-box"><div class="form-group" style="flex:2;min-width:200px;"><label>姓名或身份证</label><input type="text" id="quickSearch" placeholder="输入姓名或身份证号..." oninput="performQuickSearch()"></div><button class="btn btn-outline btn-sm" onclick="clearQuickSearch()">清除</button></div></div>
+                <div class="card"><div class="card-title">🔎 高级筛选 (实时生效)</div>
                     <div class="filter-row" style="margin-bottom:12px;">
-                        <div class="form-group">
-                            <label>类别</label>
-                            <select id="f_category"><option value="">全部</option><option>注册人员</option><option>职称人员</option><option>八大员</option><option>技术工人</option><option>特殊工种</option><option>其他</option></select>
-                            <input type="text" id="f_category_custom" class="custom-input" disabled placeholder="自定义类别">
-                        </div>
-                        <div class="form-group">
-                            <label>岗位</label>
-                            <select id="f_position"><option value="">全部</option><option>建造师</option><option>工程师</option><option>安全员</option><option>质量员</option><option>施工员</option><option>资料员</option><option>劳务员</option><option>机械员</option><option>材料员</option><option>标准员</option><option>试验员</option><option>测量员</option><option>钢筋工</option><option>模板工</option><option>其他</option></select>
-                            <input type="text" id="f_position_custom" class="custom-input" disabled placeholder="自定义岗位">
-                        </div>
-                        <div class="form-group">
-                            <label>级别</label>
-                            <select id="f_level"><option value="">全部</option><option>一级</option><option>二级</option><option>A类</option><option>B类</option><option>C类</option><option>初级</option><option>中级</option><option>高级</option><option>其他</option></select>
-                            <input type="text" id="f_level_custom" class="custom-input" disabled placeholder="自定义级别">
-                        </div>
-                        <div class="form-group">
-                            <label>注册专业</label>
-                            <select id="f_major"><option value="">全部</option><option>建筑</option><option>市政</option><option>机电</option><option>水利</option><option>公路</option><option>其他</option></select>
-                            <input type="text" id="f_major_custom" class="custom-input" disabled placeholder="自定义专业">
-                        </div>
+                        <div class="form-group"><label>类别</label><select id="f_category"><option value="">全部</option><option>注册人员</option><option>职称人员</option><option>八大员</option><option>技术工人</option><option>特殊工种</option><option>其他</option></select><input type="text" id="f_category_custom" class="custom-input" disabled placeholder="自定义类别"></div>
+                        <div class="form-group"><label>岗位</label><select id="f_position"><option value="">全部</option><option>建造师</option><option>工程师</option><option>安全员</option><option>质量员</option><option>施工员</option><option>资料员</option><option>劳务员</option><option>机械员</option><option>材料员</option><option>标准员</option><option>试验员</option><option>测量员</option><option>钢筋工</option><option>模板工</option><option>其他</option></select><input type="text" id="f_position_custom" class="custom-input" disabled placeholder="自定义岗位"></div>
+                        <div class="form-group"><label>级别</label><select id="f_level"><option value="">全部</option><option>一级</option><option>二级</option><option>A类</option><option>B类</option><option>C类</option><option>初级</option><option>中级</option><option>高级</option><option>其他</option></select><input type="text" id="f_level_custom" class="custom-input" disabled placeholder="自定义级别"></div>
+                        <div class="form-group"><label>注册专业</label><select id="f_major"><option value="">全部</option><option>建筑</option><option>市政</option><option>机电</option><option>水利</option><option>公路</option><option>其他</option></select><input type="text" id="f_major_custom" class="custom-input" disabled placeholder="自定义专业"></div>
                     </div>
                     <div class="filter-row" style="margin-bottom:12px;">
-                        <div class="form-group">
-                            <label>所属公司</label>
-                            <select id="f_company"><option value="">全部</option><option>正大</option><option>世拓</option><option>其他</option></select>
-                            <input type="text" id="f_company_custom" class="custom-input" disabled placeholder="自定义公司">
-                        </div>
-                        <div class="form-group">
-                            <label>社保</label>
-                            <select id="f_socialSecurity"><option value="">全部</option><option>有</option><option>无</option></select>
-                        </div>
+                        <div class="form-group"><label>所属公司</label><select id="f_company"><option value="">全部</option><option>正大</option><option>世拓</option><option>其他</option></select><input type="text" id="f_company_custom" class="custom-input" disabled placeholder="自定义公司"></div>
+                        <div class="form-group"><label>社保</label><select id="f_socialSecurity"><option value="">全部</option><option>有</option><option>无</option></select></div>
                     </div>
-                    <div style="display:flex;gap:10px;">
-                        <button class="btn btn-outline btn-sm" onclick="clearAdvancedFilter()">清除筛选</button>
-                        <button class="btn btn-success btn-sm" onclick="exportQueryResults()">📥 导出Excel</button>
-                    </div>
+                    <div style="display:flex;gap:10px;"><button class="btn btn-outline btn-sm" onclick="clearAdvancedFilter()">清除筛选</button><button class="btn btn-success btn-sm" onclick="exportQueryResults()">📥 导出Excel</button></div>
                 </div>
-                <div class="card">
-                    <div class="card-title">查询结果 <span class="badge-count" id="queryCount">0</span></div>
-                    <div class="table-wrapper" id="queryTableWrapper" style="max-height:50vh;">
-                        <table id="queryTable">
-                            <thead><tr><th class="checkbox-cell"><input type="checkbox" id="querySelectAll" onchange="toggleSelectAllQuery(this)"></th>
-                            <th data-sort-key="seq">序号</th><th data-sort-key="name">姓名</th><th data-sort-key="idcard">身份证</th>
-                            <th data-sort-key="category">类别</th><th data-sort-key="position">岗位</th><th data-sort-key="regno">注册号</th>
-                            <th data-sort-key="major">注册专业</th><th data-sort-key="validity">有效期</th><th data-sort-key="level">级别</th>
-                            <th data-sort-key="issuer">发证单位</th><th data-sort-key="phone">联系电话</th><th data-sort-key="jishibanAccount">冀时办账号</th>
-                            <th data-sort-key="jishibanPassword">冀时办密码</th><th data-sort-key="socialSecurity">社保</th><th data-sort-key="company">所属公司</th>
-                            <th data-sort-key="remarks">备注</th></tr></thead>
-                            <tbody id="queryTbody"></tbody>
-                        </table>
-                    </div>
-                </div>
+                <div class="card"><div class="card-title">查询结果 <span class="badge-count" id="queryCount">0</span></div><div class="table-wrapper" id="queryTableWrapper" style="max-height:50vh;"><table id="queryTable"><thead><tr><th class="checkbox-cell"><input type="checkbox" id="querySelectAll" onchange="toggleSelectAllQuery(this)"></th><th data-sort-key="seq">序号</th><th data-sort-key="name">姓名</th><th data-sort-key="idcard">身份证</th><th data-sort-key="category">类别</th><th data-sort-key="position">岗位</th><th data-sort-key="regno">注册号</th><th data-sort-key="major">注册专业</th><th data-sort-key="validity">有效期</th><th data-sort-key="level">级别</th><th data-sort-key="issuer">发证单位</th><th data-sort-key="phone">联系电话</th><th data-sort-key="jishibanAccount">冀时办账号</th><th data-sort-key="jishibanPassword">冀时办密码</th><th data-sort-key="socialSecurity">社保</th><th data-sort-key="company">所属公司</th><th data-sort-key="remarks">备注</th></tr></thead><tbody id="queryTbody"></tbody></table></div></div>
             </div>
-
             <div class="tab-panel" id="tab-data">
-                <div class="card">
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-                        <div class="card-title" style="margin:0;">人员数据汇总表 <span class="badge-count" id="dataCount">0</span></div>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <button class="btn btn-outline btn-sm" onclick="handleEditSelected()">✏️ 编辑</button>
-                            <button class="btn btn-danger btn-sm" onclick="handleBatchDelete()">🗑️ 批量删除</button>
-                            <button class="btn btn-warning btn-sm" onclick="handleBackupToCloud()">☁️ 备份到云端</button>
-                            <button class="btn btn-outline btn-sm" onclick="handleRestoreFromCloud()">⬇️ 从云端恢复</button>
-                            <button class="btn btn-success btn-sm" onclick="exportAllData()">📥 导出EXCEL</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card" style="padding:12px 16px;">
-                    <div class="table-wrapper" id="dataTableWrapper" style="max-height:55vh;">
-                        <table id="dataTable">
-                            <thead><tr><th class="checkbox-cell"><input type="checkbox" id="dataSelectAll" onchange="toggleSelectAllData(this)"></th>
-                            <th data-sort-key="seq">序号</th><th data-sort-key="name">姓名</th><th data-sort-key="idcard">身份证</th>
-                            <th data-sort-key="category">类别</th><th data-sort-key="position">岗位</th><th data-sort-key="regno">注册号</th>
-                            <th data-sort-key="major">注册专业</th><th data-sort-key="validity">有效期</th><th data-sort-key="level">级别</th>
-                            <th data-sort-key="issuer">发证单位</th><th data-sort-key="phone">联系电话</th><th data-sort-key="jishibanAccount">冀时办账号</th>
-                            <th data-sort-key="jishibanPassword">冀时办密码</th><th data-sort-key="socialSecurity">社保</th><th data-sort-key="company">所属公司</th>
-                            <th data-sort-key="remarks">备注</th></tr></thead>
-                            <tbody id="dataTbody"></tbody>
-                        </table>
-                    </div>
-                </div>
+                <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;"><div class="card-title" style="margin:0;">人员数据汇总表 <span class="badge-count" id="dataCount">0</span></div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-outline btn-sm" onclick="handleEditSelected()">✏️ 编辑</button><button class="btn btn-danger btn-sm" onclick="handleBatchDelete()">🗑️ 批量删除</button><button class="btn btn-warning btn-sm" onclick="handleBackupToCloud()">☁️ 备份到云端</button><button class="btn btn-outline btn-sm" onclick="handleRestoreFromCloud()">⬇️ 从云端恢复</button><button class="btn btn-success btn-sm" onclick="exportAllData()">📥 导出EXCEL</button></div></div></div>
+                <div class="card" style="padding:12px 16px;"><div class="table-wrapper" id="dataTableWrapper" style="max-height:55vh;"><table id="dataTable"><thead><tr><th class="checkbox-cell"><input type="checkbox" id="dataSelectAll" onchange="toggleSelectAllData(this)"></th><th data-sort-key="seq">序号</th><th data-sort-key="name">姓名</th><th data-sort-key="idcard">身份证</th><th data-sort-key="category">类别</th><th data-sort-key="position">岗位</th><th data-sort-key="regno">注册号</th><th data-sort-key="major">注册专业</th><th data-sort-key="validity">有效期</th><th data-sort-key="level">级别</th><th data-sort-key="issuer">发证单位</th><th data-sort-key="phone">联系电话</th><th data-sort-key="jishibanAccount">冀时办账号</th><th data-sort-key="jishibanPassword">冀时办密码</th><th data-sort-key="socialSecurity">社保</th><th data-sort-key="company">所属公司</th><th data-sort-key="remarks">备注</th></tr></thead><tbody id="dataTbody"></tbody></table></div></div>
             </div>
         </div>
     </div>
 
-    <div class="modal-overlay" id="passwordModal" style="display:none;">
-        <div class="modal" style="max-width:420px;">
-            <h3>🔒 身份验证</h3>
-            <div class="form-group"><label>请输入敏感信息密码</label><input type="password" id="passwordInput" onkeydown="if(event.key==='Enter')submitPassword()"></div>
-            <p id="passwordError" style="color:var(--danger);font-size:12px;display:none;">密码错误</p>
-            <div class="modal-actions">
-                <button class="btn btn-outline btn-sm" onclick="closePasswordModal()">取消</button>
-                <button class="btn btn-primary btn-sm" onclick="submitPassword()">确认</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="editModal" style="display:none;">
-        <div class="modal" style="max-width:800px;">
-            <button class="modal-close" onclick="closeEditModal()">×</button>
-            <h3 id="editModalTitle">✏️ 人员信息</h3>
-            <div class="form-row">
-                <div class="form-group"><label>序号</label><input type="text" id="e_seq"></div>
-                <div class="form-group"><label>姓名 *</label><input type="text" id="e_name"></div>
-                <div class="form-group"><label>身份证</label><input type="text" id="e_idcard"></div>
-                <div class="form-group">
-                    <label>类别</label>
-                    <select id="e_category"><option>注册人员</option><option>职称人员</option><option>八大员</option><option>技术工人</option><option>特殊工种</option><option>其他</option></select>
-                    <input type="text" id="e_category_custom" class="custom-input" disabled placeholder="请输入自定义类别">
-                </div>
-                <div class="form-group">
-                    <label>岗位</label>
-                    <select id="e_position"><option>建造师</option><option>工程师</option><option>安全员</option><option>质量员</option><option>施工员</option><option>资料员</option><option>劳务员</option><option>机械员</option><option>材料员</option><option>标准员</option><option>试验员</option><option>测量员</option><option>钢筋工</option><option>模板工</option><option>其他</option></select>
-                    <input type="text" id="e_position_custom" class="custom-input" disabled placeholder="请输入自定义岗位">
-                </div>
-                <div class="form-group"><label>注册号</label><input type="text" id="e_regno"></div>
-                <div class="form-group">
-                    <label>注册专业</label>
-                    <select id="e_major"><option>建筑</option><option>市政</option><option>机电</option><option>水利</option><option>公路</option><option>其他</option></select>
-                    <input type="text" id="e_major_custom" class="custom-input" disabled placeholder="请输入自定义专业">
-                </div>
-                <div class="form-group"><label>有效期</label><input type="date" id="e_validity"></div>
-                <div class="form-group">
-                    <label>级别</label>
-                    <select id="e_level"><option>一级</option><option>二级</option><option>A类</option><option>B类</option><option>C类</option><option>初级</option><option>中级</option><option>高级</option><option>其他</option></select>
-                    <input type="text" id="e_level_custom" class="custom-input" disabled placeholder="请输入自定义级别">
-                </div>
-                <div class="form-group"><label>发证单位</label><input type="text" id="e_issuer"></div>
-                <div class="form-group"><label>联系电话</label><input type="text" id="e_phone"></div>
-                <div class="form-group"><label>冀时办账号</label><input type="text" id="e_jishibanAccount"></div>
-                <div class="form-group"><label>冀时办密码</label><input type="text" id="e_jishibanPassword"></div>
-                <div class="form-group"><label>社保</label><select id="e_socialSecurity"><option>有</option><option>无</option></select></div>
-                <div class="form-group">
-                    <label>所属公司</label>
-                    <select id="e_company"><option>正大</option><option>世拓</option><option>其他</option></select>
-                    <input type="text" id="e_company_custom" class="custom-input" disabled placeholder="请输入自定义公司">
-                </div>
-                <div class="form-group" style="grid-column: span 2;"><label>备注</label><input type="text" id="e_remarks"></div>
-            </div>
-            <input type="hidden" id="e_index" value="-1">
-            <div class="modal-actions">
-                <button class="btn btn-outline" onclick="closeEditModal()">取消</button>
-                <button class="btn btn-primary" onclick="savePersonFromModal()">保存</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="exportFieldModal" style="display:none;">
-        <div class="modal" style="max-width:650px;">
-            <h3>📋 自定义导出列</h3>
-            <p style="margin-bottom:16px;">勾选需要导出的字段</p>
-            <div class="export-field-grid" id="exportFieldCheckboxes"></div>
-            <div class="modal-actions">
-                <button class="btn btn-outline" onclick="closeExportFieldModal()">取消</button>
-                <button class="btn btn-primary" onclick="confirmExport()">确认导出</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="dueModal" style="display:none;">
-        <div class="modal" style="max-width:950px;">
-            <h3>⚠️ 需延期人员（有效期小于50天）</h3>
-            <div class="table-wrapper" style="max-height:50vh;">
-                <table id="dueTable">
-                    <thead><tr><th>序号</th><th>姓名</th><th>身份证</th><th>类别</th><th>岗位</th><th>级别</th><th>注册专业</th><th>有效期</th><th>冀时办账号</th><th>冀时办密码</th><th>所属公司</th></tr></thead>
-                    <tbody id="dueTbody"></tbody>
-                </table>
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-outline" onclick="document.getElementById('dueModal').style.display='none'">关闭</button>
-                <button class="btn btn-primary" onclick="downloadDueList()">📥 下载需延期人员表格</button>
-            </div>
-        </div>
-    </div>
-
+    <div class="modal-overlay" id="passwordModal" style="display:none;"><div class="modal" style="max-width:420px;"><h3>🔒 身份验证</h3><div class="form-group"><label>请输入敏感信息密码</label><input type="password" id="passwordInput" onkeydown="if(event.key==='Enter')submitPassword()"></div><p id="passwordError" style="color:var(--danger);font-size:12px;display:none;">密码错误</p><div class="modal-actions"><button class="btn btn-outline btn-sm" onclick="closePasswordModal()">取消</button><button class="btn btn-primary btn-sm" onclick="submitPassword()">确认</button></div></div></div>
+    <div class="modal-overlay" id="editModal" style="display:none;"><div class="modal" style="max-width:800px;"><button class="modal-close" onclick="closeEditModal()">×</button><h3 id="editModalTitle">✏️ 人员信息</h3><div class="form-row"><div class="form-group"><label>序号</label><input type="text" id="e_seq"></div><div class="form-group"><label>姓名 *</label><input type="text" id="e_name"></div><div class="form-group"><label>身份证</label><input type="text" id="e_idcard"></div><div class="form-group"><label>类别</label><select id="e_category"><option>注册人员</option><option>职称人员</option><option>八大员</option><option>技术工人</option><option>特殊工种</option><option>其他</option></select><input type="text" id="e_category_custom" class="custom-input" disabled placeholder="请输入自定义类别"></div><div class="form-group"><label>岗位</label><select id="e_position"><option>建造师</option><option>工程师</option><option>安全员</option><option>质量员</option><option>施工员</option><option>资料员</option><option>劳务员</option><option>机械员</option><option>材料员</option><option>标准员</option><option>试验员</option><option>测量员</option><option>钢筋工</option><option>模板工</option><option>其他</option></select><input type="text" id="e_position_custom" class="custom-input" disabled placeholder="请输入自定义岗位"></div><div class="form-group"><label>注册号</label><input type="text" id="e_regno"></div><div class="form-group"><label>注册专业</label><select id="e_major"><option>建筑</option><option>市政</option><option>机电</option><option>水利</option><option>公路</option><option>其他</option></select><input type="text" id="e_major_custom" class="custom-input" disabled placeholder="请输入自定义专业"></div><div class="form-group"><label>有效期</label><input type="date" id="e_validity"></div><div class="form-group"><label>级别</label><select id="e_level"><option>一级</option><option>二级</option><option>A类</option><option>B类</option><option>C类</option><option>初级</option><option>中级</option><option>高级</option><option>其他</option></select><input type="text" id="e_level_custom" class="custom-input" disabled placeholder="请输入自定义级别"></div><div class="form-group"><label>发证单位</label><input type="text" id="e_issuer"></div><div class="form-group"><label>联系电话</label><input type="text" id="e_phone"></div><div class="form-group"><label>冀时办账号</label><input type="text" id="e_jishibanAccount"></div><div class="form-group"><label>冀时办密码</label><input type="text" id="e_jishibanPassword"></div><div class="form-group"><label>社保</label><select id="e_socialSecurity"><option>有</option><option>无</option></select></div><div class="form-group"><label>所属公司</label><select id="e_company"><option>正大</option><option>世拓</option><option>其他</option></select><input type="text" id="e_company_custom" class="custom-input" disabled placeholder="请输入自定义公司"></div><div class="form-group" style="grid-column: span 2;"><label>备注</label><input type="text" id="e_remarks"></div></div><input type="hidden" id="e_index" value="-1"><div class="modal-actions"><button class="btn btn-outline" onclick="closeEditModal()">取消</button><button class="btn btn-primary" onclick="savePersonFromModal()">保存</button></div></div></div>
+    <div class="modal-overlay" id="exportFieldModal" style="display:none;"><div class="modal" style="max-width:650px;"><h3>📋 自定义导出列</h3><p style="margin-bottom:16px;">勾选需要导出的字段</p><div class="export-field-grid" id="exportFieldCheckboxes"></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeExportFieldModal()">取消</button><button class="btn btn-primary" onclick="confirmExport()">确认导出</button></div></div></div>
+    <div class="modal-overlay" id="dueModal" style="display:none;"><div class="modal" style="max-width:950px;"><h3>⚠️ 需延期人员（有效期小于50天）</h3><div class="table-wrapper" style="max-height:50vh;"><table id="dueTable"><thead><tr><th>序号</th><th>姓名</th><th>身份证</th><th>类别</th><th>岗位</th><th>级别</th><th>注册专业</th><th>有效期</th><th>冀时办账号</th><th>冀时办密码</th><th>所属公司</th></tr></thead><tbody id="dueTbody"></tbody></table></div><div class="modal-actions"><button class="btn btn-outline" onclick="document.getElementById('dueModal').style.display='none'">关闭</button><button class="btn btn-primary" onclick="downloadDueList()">📥 下载需延期人员表格</button></div></div></div>
     <div class="toast-container" id="toastContainer"></div>
 
     <script>
@@ -384,10 +194,7 @@
 
         let currentUser = '', currentSensitivePwd = '', isLoggedIn = false;
         let allData = [], queryResults = [], passwordCallback = null, editQueue = [], isProcessingQueue = false, pendingExportCallback = null;
-
-        // 排序状态
-        let dataSortKey = null, dataSortAsc = true;
-        let querySortKey = null, querySortAsc = true;
+        let dataSortKey = null, dataSortAsc = true, querySortKey = null, querySortAsc = true;
 
         const allFields = [
             { key: 'seq', label: '序号' }, { key: 'name', label: '姓名' }, { key: 'idcard', label: '身份证' },
@@ -398,14 +205,12 @@
             { key: 'remarks', label: '备注' }
         ];
 
-        // ========== 加密解密 ==========
         function encryptData(data) { return CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPT_KEY).toString(); }
         function decryptData(cipherText) {
             try { const bytes = CryptoJS.AES.decrypt(cipherText, ENCRYPT_KEY); const decrypted = bytes.toString(CryptoJS.enc.Utf8); return decrypted ? JSON.parse(decrypted) : null; }
             catch(e) { return null; }
         }
 
-        // ========== 本地存储 ==========
         function saveLocal(data) { localStorage.setItem(LOCAL_KEY, encryptData(data)); }
         function loadLocal() {
             const raw = localStorage.getItem(LOCAL_KEY);
@@ -416,11 +221,10 @@
             return null;
         }
 
-        // ========== 自定义输入 ==========
         function setupCustomInput(selectId, customInputId) {
             const select = document.getElementById(selectId), customInput = document.getElementById(customInputId);
             if (!select || !customInput) return;
-            const handler = function() { if (select.value === '其他') { customInput.disabled = false; customInput.focus(); } else { customInput.disabled = true; customInput.value = ''; } };
+            const handler = () => { if (select.value === '其他') { customInput.disabled = false; customInput.focus(); } else { customInput.disabled = true; customInput.value = ''; } };
             select.addEventListener('change', handler); handler();
         }
         function getCustomInputVal(selectId, customInputId) { const select = document.getElementById(selectId), input = document.getElementById(customInputId); if (select && input && select.value === '其他') return input.value.trim(); return ''; }
@@ -437,7 +241,6 @@
             setupCustomInput('f_company','f_company_custom');
         }
 
-        // ========== 登录 ==========
         async function performLogin() {
             const user = document.getElementById('loginUser').value.trim(), pwd = document.getElementById('loginPwd').value.trim(), errorDiv = document.getElementById('loginError');
             if (!user || !pwd) { errorDiv.textContent = '用户名和密码不能为空'; errorDiv.style.display = 'block'; return; }
@@ -456,42 +259,38 @@
             finally { document.getElementById('loginBtn').disabled = false; document.getElementById('loginPwd').value = ''; }
         }
         function logout() { isLoggedIn = false; currentUser = ''; currentSensitivePwd = ''; document.getElementById('loginPanel').style.display = 'flex'; document.getElementById('appPanel').style.display = 'none'; allData = []; queryResults = []; }
-
         function verifySensitive(input) { if (!currentSensitivePwd) { alert('未配置敏感信息密码'); return false; } return input === currentSensitivePwd; }
 
-        // ========== Excel日期转换 ==========
         function excelSerialToDate(serial) { if (typeof serial !== 'number' || isNaN(serial) || serial <= 0) return serial; const baseDate = new Date(1899,11,30); const resultDate = new Date(baseDate.getTime() + Math.round(serial)*86400000); return resultDate.getFullYear()+'-'+String(resultDate.getMonth()+1).padStart(2,'0')+'-'+String(resultDate.getDate()).padStart(2,'0'); }
         function dateToExcelSerial(dateStr) { if (!dateStr) return ''; const parts = dateStr.split('-'); if (parts.length !== 3) return dateStr; const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2])); return Math.round((d.getTime() - new Date(1899,11,30).getTime()) / 86400000); }
         function isExcelSerialNumber(val) { return typeof val === 'number' && val > 40000 && val < 80000; }
 
-        // ========== 云端格式 ==========
         function convertToCloudFormat(data) { return data.map(item => ({ "序号": parseInt(item.seq)||0, "姓名": item.name, "身份证": item.idcard, "类别": item.category, "岗位": item.position, "注册号": item.regno, "注册专业": item.major, "有效期": item.validity ? dateToExcelSerial(item.validity) : "", "级别": item.level, "发证单位": item.issuer, "联系电话": item.phone, "冀时办账号": item.jishibanAccount, "冀时办密码": item.jishibanPassword, "社保": item.socialSecurity, "所属公司": item.company, "备注": item.remarks, "类别自定义": item.categoryOther||"", "岗位自定义": item.positionOther||"", "注册专业自定义": item.majorOther||"", "级别自定义": item.levelOther||"", "所属公司自定义": item.companyOther||"" })); }
         function convertFromCloudFormat(cloudData) { return cloudData.map(item => ({ seq: String(item["序号"]||""), name: item["姓名"]||"", idcard: item["身份证"]||"", category: item["类别"]||"", position: item["岗位"]||"", regno: item["注册号"]||"", major: item["注册专业"]||"", validity: item["有效期"] ? excelSerialToDate(parseInt(item["有效期"])) : "", level: item["级别"]||"", issuer: item["发证单位"]||"", phone: item["联系电话"]||"", jishibanAccount: item["冀时办账号"]||"", jishibanPassword: item["冀时办密码"]||"", socialSecurity: item["社保"]||"", company: item["所属公司"]||"", remarks: item["备注"]||"", categoryOther: item["类别自定义"]||"", positionOther: item["岗位自定义"]||"", majorOther: item["注册专业自定义"]||"", levelOther: item["级别自定义"]||"", companyOther: item["所属公司自定义"]||"" })); }
 
         function showToast(msg, type='info') { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast '+type; toast.textContent = msg; container.appendChild(toast); setTimeout(() => toast.remove(), 3000); }
 
-        // ========== 初始化数据 ==========
         async function initDataAfterLogin() {
             let localData = loadLocal(); let cloudData = null;
             try {
                 const mainInfo = await cloudReadForKey(MAIN_CLOUD_KEY);
-                if (mainInfo && mainInfo.batches) { const batchCount = mainInfo.batches; let cloudArray = []; for (let i=1; i<=batchCount; i++) { const batchKey = `${MAIN_CLOUD_KEY}_batch${i}`; const encStr = await cloudReadForKeyRaw(batchKey); if (encStr) { const decrypted = decryptData(encStr); if (decrypted && Array.isArray(decrypted)) cloudArray = cloudArray.concat(decrypted); } } if (cloudArray.length>0) cloudData = convertFromCloudFormat(cloudArray); }
-                else if (Array.isArray(mainInfo)) cloudData = convertFromCloudFormat(mainInfo);
+                if (mainInfo && mainInfo.batches) {
+                    const batchCount = mainInfo.batches; let cloudArray = [];
+                    for (let i = 1; i <= batchCount; i++) {
+                        const batchKey = `${MAIN_CLOUD_KEY}_batch${i}`;
+                        const encStr = await cloudReadForKeyRaw(batchKey);
+                        if (encStr) { const decrypted = decryptData(encStr); if (decrypted && Array.isArray(decrypted)) cloudArray = cloudArray.concat(decrypted); }
+                    }
+                    if (cloudArray.length > 0) cloudData = convertFromCloudFormat(cloudArray);
+                } else if (Array.isArray(mainInfo)) cloudData = convertFromCloudFormat(mainInfo);
             } catch(e) {}
-            if (localData && cloudData) { if (cloudData.length > localData.length) { allData = cloudData; saveLocal(allData); showToast('已加载云端数据（条数更多）','info'); } else { allData = localData; } }
+            if (localData && cloudData) { if (cloudData.length > localData.length) { allData = cloudData; saveLocal(allData); showToast('已加载云端数据','info'); } else { allData = localData; } }
             else if (localData) { allData = localData; } else if (cloudData) { allData = cloudData; saveLocal(allData); showToast('已从云端加载数据','info'); } else { allData = []; }
             refreshAllViews(); checkDueDates();
         }
 
-        function checkDueDates() {
-            const now = new Date(); const dueList = allData.filter(p => { if (!p.validity) return false; const date = new Date(p.validity); if (isNaN(date.getTime())) return false; const diff = Math.ceil((date - now) / (1000*60*60*24)); return diff < 50; });
-            if (dueList.length > 0) { document.getElementById('dueTbody').innerHTML = dueList.map(p => `<tr><td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td><td>${p.category}</td><td>${p.position}</td><td>${p.level}</td><td>${p.major}</td><td>${p.validity}</td><td>${p.jishibanAccount}</td><td>${p.jishibanPassword}</td><td>${p.company}</td></tr>`).join(''); document.getElementById('dueModal').style.display='flex'; }
-        }
-        function downloadDueList() {
-            const dueList = allData.filter(p => { if (!p.validity) return false; const date = new Date(p.validity); if (isNaN(date.getTime())) return false; const diff = Math.ceil((date - new Date()) / (1000*60*60*24)); return diff < 50; });
-            const exportData = dueList.map(p => ({ "序号": p.seq, "姓名": p.name, "身份证": p.idcard, "类别": p.category, "岗位": p.position, "级别": p.level, "注册专业": p.major, "有效期": p.validity, "冀时办账号": p.jishibanAccount, "冀时办密码": p.jishibanPassword, "所属公司": p.company }));
-            const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '需延期人员'); XLSX.writeFile(wb, `需延期人员_${new Date().toISOString().slice(0,10)}.xlsx`);
-        }
+        function checkDueDates() { const now = new Date(); const dueList = allData.filter(p => { if (!p.validity) return false; const date = new Date(p.validity); if (isNaN(date.getTime())) return false; const diff = Math.ceil((date - now) / (1000*60*60*24)); return diff < 50; }); if (dueList.length > 0) { document.getElementById('dueTbody').innerHTML = dueList.map(p => `<tr><td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td><td>${p.category}</td><td>${p.position}</td><td>${p.level}</td><td>${p.major}</td><td>${p.validity}</td><td>${p.jishibanAccount}</td><td>${p.jishibanPassword}</td><td>${p.company}</td></tr>`).join(''); document.getElementById('dueModal').style.display='flex'; } }
+        function downloadDueList() { const dueList = allData.filter(p => { if (!p.validity) return false; const date = new Date(p.validity); if (isNaN(date.getTime())) return false; const diff = Math.ceil((date - new Date()) / (1000*60*60*24)); return diff < 50; }); const exportData = dueList.map(p => ({ "序号": p.seq, "姓名": p.name, "身份证": p.idcard, "类别": p.category, "岗位": p.position, "级别": p.level, "注册专业": p.major, "有效期": p.validity, "冀时办账号": p.jishibanAccount, "冀时办密码": p.jishibanPassword, "所属公司": p.company })); const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '需延期人员'); XLSX.writeFile(wb, `需延期人员_${new Date().toISOString().slice(0,10)}.xlsx`); }
 
         function createPersonObj(seq, name, idcard, category, position, regno, major, validity, level, issuer, phone, jishibanAccount, jishibanPassword, socialSecurity, company, remarks, categoryOther, positionOther, majorOther, levelOther, companyOther) {
             return { seq: String(seq||''), name, idcard, category, position, regno, major, validity, level, issuer, phone, jishibanAccount, jishibanPassword, socialSecurity, company, remarks, categoryOther, positionOther, majorOther, levelOther, companyOther };
@@ -499,13 +298,11 @@
         function getNextSeq() { if (allData.length === 0) return '1'; return String(Math.max(...allData.map(d => parseInt(d.seq)||0)) + 1); }
         function getDisplayValue(type, value, customValue) { if (value === '其他' && customValue) return customValue; return value; }
 
-        // ========== 排序逻辑 ==========
         function getSortValue(obj, key) {
             if (key === 'seq') { const n = parseInt(obj.seq); return isNaN(n) ? -1 : n; }
             if (key === 'validity') { if (!obj.validity) return -8640000000000000; const d = new Date(obj.validity); return isNaN(d.getTime()) ? -8640000000000000 : d.getTime(); }
-            if (key === 'maxPrice' || key === 'regno') { const n = parseFloat(obj[key]); return isNaN(n) ? '' : n; }
-            const display = getDisplayValue(key, obj[key], obj[key+'Other'] || '');
-            return display || '';
+            if (key === 'regno') { const n = parseFloat(obj[key]); return isNaN(n) ? '' : n; }
+            const display = getDisplayValue(key, obj[key], obj[key+'Other'] || ''); return display || '';
         }
         function sortData(data, sortKey, asc) {
             if (!sortKey) return data;
@@ -517,44 +314,31 @@
             });
         }
         function applySortIndicators(tableId, sortKey, asc) {
-            const table = document.getElementById(tableId);
-            if (!table) return;
+            const table = document.getElementById(tableId); if (!table) return;
             table.querySelectorAll('thead th').forEach(th => { th.classList.remove('sorted-asc','sorted-desc'); });
-            if (sortKey) {
-                const th = table.querySelector(`th[data-sort-key="${sortKey}"]`);
-                if (th) th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
-            }
+            if (sortKey) { const th = table.querySelector(`th[data-sort-key="${sortKey}"]`); if (th) th.classList.add(asc ? 'sorted-asc' : 'sorted-desc'); }
         }
 
-        function refreshAllViews() {
-            refreshDataTable(); refreshQueryTable();
-            document.getElementById('dataCountInput').textContent = allData.length;
-            document.getElementById('dataCount').textContent = allData.length;
-            const cnt = queryResults.length > 0 ? queryResults.length : (hasAdvancedFilter() ? 0 : allData.length);
-            document.getElementById('queryCount').textContent = cnt;
-        }
-
+        function refreshAllViews() { refreshDataTable(); refreshQueryTable(); document.getElementById('dataCountInput').textContent = allData.length; document.getElementById('dataCount').textContent = allData.length; const cnt = queryResults.length > 0 ? queryResults.length : (hasAdvancedFilter() ? 0 : allData.length); document.getElementById('queryCount').textContent = cnt; }
         function refreshDataTable() {
-            const sortedData = sortData(allData, dataSortKey, dataSortAsc);
+            const sorted = sortData(allData, dataSortKey, dataSortAsc);
             const tbody = document.getElementById('dataTbody'); tbody.innerHTML = '';
-            sortedData.forEach((p, i) => {
-                const tr = document.createElement('tr'); tr.setAttribute('data-index', allData.indexOf(p)); tr.className = (i%2===0) ? 'even-row' : 'odd-row';
-                tr.innerHTML = `<td class="checkbox-cell"><input type="checkbox" class="row-checkbox-data" data-index="${allData.indexOf(p)}" onclick="event.stopPropagation();updateDataSelectAll();"></td>
+            sorted.forEach((p, idx) => {
+                const i = allData.indexOf(p);
+                const tr = document.createElement('tr'); tr.setAttribute('data-index', i); tr.className = (idx%2===0) ? 'even-row' : 'odd-row';
+                tr.innerHTML = `<td class="checkbox-cell"><input type="checkbox" class="row-checkbox-data" data-index="${i}" onclick="event.stopPropagation();updateDataSelectAll()"></td>
                     <td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td>
-                    <td>${getDisplayValue('category', p.category, p.categoryOther)}</td>
-                    <td>${getDisplayValue('position', p.position, p.positionOther)}</td>
-                    <td>${p.regno}</td><td>${getDisplayValue('major', p.major, p.majorOther)}</td>
-                    <td>${p.validity}</td><td>${getDisplayValue('level', p.level, p.levelOther)}</td>
-                    <td>${p.issuer}</td><td>${p.phone}</td><td>${p.jishibanAccount}</td><td>${p.jishibanPassword}</td>
-                    <td>${p.socialSecurity}</td><td>${getDisplayValue('company', p.company, p.companyOther)}</td><td>${p.remarks}</td>`;
-                tr.addEventListener('dblclick', () => handleDoubleClickRow(allData.indexOf(p)));
+                    <td>${getDisplayValue('category',p.category,p.categoryOther)}</td><td>${getDisplayValue('position',p.position,p.positionOther)}</td>
+                    <td>${p.regno}</td><td>${getDisplayValue('major',p.major,p.majorOther)}</td><td>${p.validity}</td>
+                    <td>${getDisplayValue('level',p.level,p.levelOther)}</td><td>${p.issuer}</td><td>${p.phone}</td>
+                    <td>${p.jishibanAccount}</td><td>${p.jishibanPassword}</td><td>${p.socialSecurity}</td>
+                    <td>${getDisplayValue('company',p.company,p.companyOther)}</td><td>${p.remarks}</td>`;
+                tr.addEventListener('dblclick', () => handleDoubleClickRow(i));
                 tr.addEventListener('click', function(e){ if(e.target.tagName==='INPUT') return; const cb = this.querySelector('.row-checkbox-data'); if(cb){ cb.checked = !cb.checked; updateDataSelectAll(); } });
                 tbody.appendChild(tr);
             });
-            updateDataSelectAll();
-            applySortIndicators('dataTable', dataSortKey, dataSortAsc);
+            updateDataSelectAll(); applySortIndicators('dataTable', dataSortKey, dataSortAsc);
         }
-
         function refreshQueryTable(results) {
             let resolved = results !== undefined ? results : (queryResults.length>0 ? queryResults : allData);
             resolved = sortData(resolved, querySortKey, querySortAsc);
@@ -564,12 +348,11 @@
                 const tr = document.createElement('tr'); tr.setAttribute('data-index', orig>=0 ? orig : idx); tr.className = (idx%2===0) ? 'even-row' : 'odd-row';
                 tr.innerHTML = `<td class="checkbox-cell"><input type="checkbox" class="row-checkbox-query" data-index="${orig>=0?orig:idx}"></td>
                     <td>${p.seq}</td><td>${p.name}</td><td>${p.idcard}</td>
-                    <td>${getDisplayValue('category', p.category, p.categoryOther)}</td>
-                    <td>${getDisplayValue('position', p.position, p.positionOther)}</td>
-                    <td>${p.regno}</td><td>${getDisplayValue('major', p.major, p.majorOther)}</td>
-                    <td>${p.validity}</td><td>${getDisplayValue('level', p.level, p.levelOther)}</td>
-                    <td>${p.issuer}</td><td>${p.phone}</td><td>${p.jishibanAccount}</td><td>${p.jishibanPassword}</td>
-                    <td>${p.socialSecurity}</td><td>${getDisplayValue('company', p.company, p.companyOther)}</td><td>${p.remarks}</td>`;
+                    <td>${getDisplayValue('category',p.category,p.categoryOther)}</td><td>${getDisplayValue('position',p.position,p.positionOther)}</td>
+                    <td>${p.regno}</td><td>${getDisplayValue('major',p.major,p.majorOther)}</td><td>${p.validity}</td>
+                    <td>${getDisplayValue('level',p.level,p.levelOther)}</td><td>${p.issuer}</td><td>${p.phone}</td>
+                    <td>${p.jishibanAccount}</td><td>${p.jishibanPassword}</td><td>${p.socialSecurity}</td>
+                    <td>${getDisplayValue('company',p.company,p.companyOther)}</td><td>${p.remarks}</td>`;
                 tr.addEventListener('dblclick', () => { const ri = allData.indexOf(p); if(ri>=0) handleDoubleClickRow(ri); });
                 tr.addEventListener('click', function(e){ if(e.target.tagName==='INPUT') return; const cb = this.querySelector('.row-checkbox-query'); if(cb) cb.checked = !cb.checked; });
                 tbody.appendChild(tr);
@@ -604,43 +387,6 @@
         function exportAllData() { openExportFieldModal(fields => exportWithFields(allData, '人员数据汇总表.xlsx', fields)); }
         function exportQueryResults() { openExportFieldModal(fields => { const data = queryResults.length>0 ? queryResults : allData; exportWithFields(data, '查询结果导出.xlsx', fields); }); }
 
-        function openEditModal(person, index) { /* ... 同上 ... */ }
-        function closeEditModal() { document.getElementById('editModal').style.display='none'; processEditQueue(); }
-        async function savePersonFromModal() { /* ... 同上 ... */ }
-        function openAddPersonModal() { const np = createPersonObj(getNextSeq(), '', '', '注册人员', '建造师', '', '建筑', '', '二级', '', '', '', '', '有', '正大', '', '', '', '', '', ''); openEditModal(np, -1); }
-        function processEditQueue() { if (editQueue.length>0 && !isProcessingQueue) { isProcessingQueue=true; const ni=editQueue.shift(); if (ni>=0 && ni<allData.length) openEditModal(allData[ni], ni); else processEditQueue(); } else if (editQueue.length===0) isProcessingQueue=false; }
-        function handleEditSelected() { const indices=getSelectedIndices(); if (!indices.length) { showToast('请勾选','error'); return; } showPasswordModal(() => { editQueue=[...indices]; isProcessingQueue=false; processEditQueue(); }); }
-        function handleDoubleClickRow(index) { if (index<0 || index>=allData.length) return; showPasswordModal(() => openEditModal(allData[index], index)); }
-        async function handleBatchDelete() { const indices=getSelectedIndices(); if (!indices.length) { showToast('请勾选','error'); return; } showPasswordModal(async () => { if (confirm(`确定删除 ${indices.length} 条？`)) { indices.sort((a,b)=>b-a).forEach(i => allData.splice(i,1)); saveLocal(allData); refreshAllViews(); showToast('已删除','success'); } }); }
-
-        function importFromExcel() { /* ... 增量更新导入 ... */ }
-
-        function hasAdvancedFilter() { return ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].some(id => document.getElementById(id)?.value !== ''); }
-        function performAdvancedFilter() { /* ... */ }
-        function clearAdvancedFilter() { /* ... */ }
-        function performQuickSearch() { /* ... */ }
-        function clearQuickSearch() { /* ... */ }
-
-        // ========== 排序表头点击处理 ==========
-        function handleTableSortClick(tableId, e) {
-            const th = e.target.closest('th[data-sort-key]');
-            if (!th) return;
-            const key = th.dataset.sortKey;
-            if (tableId === 'dataTable') {
-                if (dataSortKey === key) { dataSortAsc = !dataSortAsc; } else { dataSortKey = key; dataSortAsc = true; }
-                refreshDataTable();
-            } else if (tableId === 'queryTable') {
-                if (querySortKey === key) { querySortAsc = !querySortAsc; } else { querySortKey = key; querySortAsc = true; }
-                refreshQueryTable();
-            }
-        }
-
-        document.getElementById('dataTable').addEventListener('click', function(e) { handleTableSortClick('dataTable', e); });
-        document.getElementById('queryTable').addEventListener('click', function(e) { handleTableSortClick('queryTable', e); });
-
-        // 省略其余已存在的函数 (openEditModal, savePersonFromModal, importFromExcel, performAdvancedFilter, clearAdvancedFilter, performQuickSearch, clearQuickSearch, switchTab, 云端备份恢复等)
-        // 为保证完整性，以下粘贴完整函数体
-
         function openEditModal(person, index) {
             document.getElementById('e_index').value = index; document.getElementById('e_seq').value = person.seq||''; document.getElementById('e_name').value = person.name||'';
             document.getElementById('e_idcard').value = person.idcard||'';
@@ -649,13 +395,14 @@
             setCustomInputVal('e_major','e_major_custom',person.major,person.majorOther);
             setCustomInputVal('e_level','e_level_custom',person.level,person.levelOther);
             setCustomInputVal('e_company','e_company_custom',person.company,person.companyOther);
-            document.getElementById('e_regno').value = person.regno||''; document.getElementById('e_validity').value = person.validity||'';
-            document.getElementById('e_issuer').value = person.issuer||''; document.getElementById('e_phone').value = person.phone||'';
-            document.getElementById('e_jishibanAccount').value = person.jishibanAccount||''; document.getElementById('e_jishibanPassword').value = person.jishibanPassword||'';
-            document.getElementById('e_socialSecurity').value = person.socialSecurity||'有'; document.getElementById('e_remarks').value = person.remarks||'';
-            document.getElementById('editModalTitle').textContent = index>=0 ? '修改人员信息' : '新增人员信息';
+            document.getElementById('e_regno').value=person.regno||''; document.getElementById('e_validity').value=person.validity||'';
+            document.getElementById('e_issuer').value=person.issuer||''; document.getElementById('e_phone').value=person.phone||'';
+            document.getElementById('e_jishibanAccount').value=person.jishibanAccount||''; document.getElementById('e_jishibanPassword').value=person.jishibanPassword||'';
+            document.getElementById('e_socialSecurity').value=person.socialSecurity||'有'; document.getElementById('e_remarks').value=person.remarks||'';
+            document.getElementById('editModalTitle').textContent = index>=0?'修改人员信息':'新增人员信息';
             document.getElementById('editModal').style.display='flex';
         }
+        function closeEditModal() { document.getElementById('editModal').style.display='none'; processEditQueue(); }
         async function savePersonFromModal() {
             const index = parseInt(document.getElementById('e_index').value);
             const cat = document.getElementById('e_category').value, pos = document.getElementById('e_position').value;
@@ -671,9 +418,16 @@
                 getCustomInputVal('e_company','e_company_custom')
             );
             if (!person.name.trim()) { showToast('姓名不能为空','error'); return; }
-            if (index>=0 && index<allData.length) { allData[index] = person; } else { if (!person.seq) person.seq = getNextSeq(); allData.push(person); }
+            if (index>=0 && index<allData.length) { allData[index] = person; }
+            else { if (!person.seq) person.seq = getNextSeq(); allData.push(person); }
             saveLocal(allData); showToast(index>=0?'已更新':'已添加','success'); refreshAllViews(); closeEditModal();
         }
+        function openAddPersonModal() { const np = createPersonObj(getNextSeq(), '', '', '注册人员', '建造师', '', '建筑', '', '二级', '', '', '', '', '有', '正大', '', '', '', '', '', ''); openEditModal(np, -1); }
+        function processEditQueue() { if (editQueue.length>0 && !isProcessingQueue) { isProcessingQueue=true; const ni=editQueue.shift(); if (ni>=0 && ni<allData.length) openEditModal(allData[ni], ni); else processEditQueue(); } else if (editQueue.length===0) isProcessingQueue=false; }
+        function handleEditSelected() { const indices=getSelectedIndices(); if (!indices.length) { showToast('请勾选','error'); return; } showPasswordModal(() => { editQueue=[...indices]; isProcessingQueue=false; processEditQueue(); }); }
+        function handleDoubleClickRow(index) { if (index<0 || index>=allData.length) return; showPasswordModal(() => openEditModal(allData[index], index)); }
+        async function handleBatchDelete() { const indices=getSelectedIndices(); if (!indices.length) { showToast('请勾选','error'); return; } showPasswordModal(async () => { if (confirm(`确定删除 ${indices.length} 条？`)) { indices.sort((a,b)=>b-a).forEach(i => allData.splice(i,1)); saveLocal(allData); refreshAllViews(); showToast('已删除','success'); } }); }
+
         function importFromExcel() {
             showPasswordModal(() => {
                 const input = document.createElement('input'); input.type='file'; input.accept='.xlsx,.xls';
@@ -682,8 +436,7 @@
                     const reader = new FileReader();
                     reader.onload = function(evt) {
                         const data = new Uint8Array(evt.target.result);
-                        const wb = XLSX.read(data, {type:'array'});
-                        const sheet = wb.Sheets[wb.SheetNames[0]];
+                        const wb = XLSX.read(data, {type:'array'}); const sheet = wb.Sheets[wb.SheetNames[0]];
                         const json = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
                         if (json.length<2) { showToast('Excel格式错误'); return; }
                         const rows = json.slice(1).filter(r => r.some(c => c!=='' && c!==null));
@@ -707,6 +460,8 @@
                 input.click();
             });
         }
+
+        function hasAdvancedFilter() { return ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].some(id => document.getElementById(id)?.value !== ''); }
         function performAdvancedFilter() {
             if (!hasAdvancedFilter()) { queryResults = []; refreshQueryTable(allData); return; }
             const getVal = (selId, customId) => { const sel = document.getElementById(selId); if (sel.value === '其他') return document.getElementById(customId).value.trim().toLowerCase(); return sel.value.toLowerCase(); };
@@ -726,6 +481,15 @@
         function performQuickSearch() { const kw = document.getElementById('quickSearch').value.trim().toLowerCase(); if (!kw) { queryResults=[]; refreshQueryTable(allData); return; } queryResults = allData.filter(p => (p.name&&p.name.includes(kw)) || (p.idcard&&p.idcard.includes(kw))); refreshQueryTable(queryResults); }
         function clearQuickSearch() { document.getElementById('quickSearch').value=''; queryResults=[]; refreshQueryTable(allData); }
 
+        function handleTableSortClick(tableId, e) {
+            const th = e.target.closest('th[data-sort-key]'); if (!th) return;
+            const key = th.dataset.sortKey;
+            if (tableId === 'dataTable') { if (dataSortKey === key) dataSortAsc = !dataSortAsc; else { dataSortKey = key; dataSortAsc = true; } refreshDataTable(); }
+            else if (tableId === 'queryTable') { if (querySortKey === key) querySortAsc = !querySortAsc; else { querySortKey = key; querySortAsc = true; } refreshQueryTable(); }
+        }
+        document.getElementById('dataTable').addEventListener('click', function(e) { handleTableSortClick('dataTable', e); });
+        document.getElementById('queryTable').addEventListener('click', function(e) { handleTableSortClick('queryTable', e); });
+
         function switchTab(tabId) { document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); document.getElementById(tabId)?.classList.add('active'); document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active'); refreshAllViews(); }
         document.getElementById('tabNav').addEventListener('click', e => { const btn = e.target.closest('.tab-btn'); if (btn) { const tid = btn.dataset.tab; if (tid) switchTab(tid); } });
         document.getElementById('passwordModal').addEventListener('click', e => { if(e.target===e.currentTarget) closePasswordModal(); });
@@ -734,45 +498,138 @@
         ['f_category','f_position','f_level','f_major','f_company','f_socialSecurity'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('change', performAdvancedFilter); });
         ['f_category_custom','f_position_custom','f_level_custom','f_major_custom','f_company_custom'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', performAdvancedFilter); });
 
-        // ==================== 云端备份恢复 ====================
-        async function cloudUpdateForKey(key, data) { const value = JSON.stringify(data); const url = `https://textdb.online/update/?key=${key}&value=${encodeURIComponent(value)}`; try { const resp = await fetch(url, { method: 'POST' }); if (resp.ok) { const json = await resp.json().catch(()=>null); if (json && json.status === 1) return { success: true }; } return { success: false, message: '云端返回异常' }; } catch(e) { return { success: false, message: e.message }; } }
-        async function cloudReadForKey(key) { const raw = await cloudReadForKeyRaw(key); if (!raw) return null; return decryptData(raw); }
-        async function cloudReadForKeyRaw(key) { try { const resp = await fetch(`https://textdb.online/${key}`); if (!resp.ok) return null; const text = await resp.text(); return text || null; } catch(e) { return null; } }
+        // ==================== 云端交互 ====================
+        async function cloudReadForKeyRaw(key) {
+            try {
+                const resp = await fetch(`https://textdb.online/${key}`);
+                if (!resp.ok) return null;
+                const text = await resp.text();
+                return text || null;
+            } catch(e) { return null; }
+        }
+        async function cloudReadForKey(key) {
+            const raw = await cloudReadForKeyRaw(key);
+            if (!raw) return null;
+            return decryptData(raw);
+        }
+        async function cloudUpdateForKeyRaw(key, rawString) {
+            const url = `https://textdb.online/update/?key=${key}&value=${encodeURIComponent(rawString)}`;
+            try {
+                const resp = await fetch(url, { method: 'POST' });
+                if (resp.ok) { const json = await resp.json().catch(()=>null); if (json && json.status === 1) return { success: true }; }
+                return { success: false, message: '云端返回异常' };
+            } catch(e) { return { success: false, message: e.message }; }
+        }
+        async function cloudUpdateForKey(key, data) {
+            return cloudUpdateForKeyRaw(key, encryptData(data));
+        }
+
         function getNowString() { const now = new Date(); return now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0')+String(now.getSeconds()).padStart(2,'0'); }
-        function deepEqual(obj1, obj2) { const keys1 = Object.keys(obj1); const keys2 = Object.keys(obj2); if (keys1.length !== keys2.length) return false; for (let key of keys1) { if (obj1[key] !== obj2[key]) return false; } return true; }
+        function deepEqual(obj1, obj2) { const keys1 = Object.keys(obj1), keys2 = Object.keys(obj2); if (keys1.length !== keys2.length) return false; for (let key of keys1) { if (obj1[key] !== obj2[key]) return false; } return true; }
+
         async function handleBackupToCloud() {
-            const cloudArray = convertToCloudFormat(allData); const totalItems = cloudArray.length;
+            const cloudArray = convertToCloudFormat(allData);
+            const totalItems = cloudArray.length;
             if (totalItems === 0) { showToast('没有数据需要备份','info'); return; }
-            const batches = []; let startIdx = 0;
+
+            const batches = [];
+            let startIdx = 0;
             while (startIdx < totalItems) {
-                let endIdx = startIdx + 1; let batchSlice = cloudArray.slice(startIdx, endIdx); let encStr = encryptData(batchSlice);
-                while (endIdx < totalItems) { const nextSlice = cloudArray.slice(startIdx, endIdx+1); const nextEnc = encryptData(nextSlice); if (nextEnc.length <= 6000) { endIdx++; batchSlice = nextSlice; encStr = nextEnc; } else break; }
-                if (encStr.length > 6000 && endIdx === startIdx+1) { batches.push({ data: batchSlice, enc: encStr }); startIdx = endIdx; continue; }
+                let endIdx = startIdx + 1;
+                let batchSlice = cloudArray.slice(startIdx, endIdx);
+                let encStr = encryptData(batchSlice);
+                while (endIdx < totalItems) {
+                    const nextSlice = cloudArray.slice(startIdx, endIdx + 1);
+                    const nextEnc = encryptData(nextSlice);
+                    if (nextEnc.length <= 6000) { endIdx++; batchSlice = nextSlice; encStr = nextEnc; }
+                    else break;
+                }
+                if (encStr.length > 6000 && endIdx === startIdx + 1) { batches.push({ data: batchSlice, enc: encStr }); startIdx = endIdx; continue; }
                 batches.push({ data: batchSlice, enc: encStr }); startIdx = endIdx;
             }
+
             const batchCount = batches.length;
-            for (let i=0; i<batchCount; i++) { const batchKey = `${MAIN_CLOUD_KEY}_batch${i+1}`; const currentEnc = batches[i].enc; const existingEnc = await cloudReadForKeyRaw(batchKey); if (existingEnc === currentEnc) continue; const res = await cloudUpdateForKeyRaw(batchKey, currentEnc); if (!res.success) { showToast(`备份分片${i+1}失败，操作中止`,'error'); return; } }
-            const mainInfoRes = await cloudUpdateForKey(MAIN_CLOUD_KEY, { batches: batchCount }); if (!mainInfoRes.success) showToast('主KEY更新失败，但分片已保存','warning');
-            const fields = allFields.map(f=>f.key); exportWithFields(allData, '云端备份-人员档案'+getNowString()+'.xlsx', fields);
+            for (let i = 0; i < batchCount; i++) {
+                const batchKey = `${MAIN_CLOUD_KEY}_batch${i+1}`;
+                const currentEnc = batches[i].enc;
+                const existingEnc = await cloudReadForKeyRaw(batchKey);
+                if (!existingEnc) {
+                    const res = await cloudUpdateForKeyRaw(batchKey, currentEnc);
+                    if (!res.success) { showToast(`分片${i+1}写入失败`,'error'); return; }
+                    continue;
+                }
+                if (existingEnc === currentEnc) continue;
+
+                const existingDecrypted = decryptData(existingEnc);
+                const currentData = batches[i].data;
+                if (existingDecrypted && Array.isArray(existingDecrypted)) {
+                    if (currentData.length >= existingDecrypted.length) {
+                        const res = await cloudUpdateForKeyRaw(batchKey, currentEnc);
+                        if (!res.success) { showToast(`分片${i+1}覆盖失败`,'error'); return; }
+                    } else {
+                        const allow = confirm(`分片${i+1}云端数据更多（云端${existingDecrypted.length}条，当前${currentData.length}条），是否用当前数据覆盖云端？`);
+                        if (allow) {
+                            const res = await cloudUpdateForKeyRaw(batchKey, currentEnc);
+                            if (!res.success) { showToast(`分片${i+1}覆盖失败`,'error'); return; }
+                        } else showToast(`已跳过覆盖分片${i+1}`,'info');
+                    }
+                } else {
+                    const res = await cloudUpdateForKeyRaw(batchKey, currentEnc);
+                    if (!res.success) { showToast(`分片${i+1}写入失败`,'error'); return; }
+                }
+            }
+
+            const mainInfoRes = await cloudUpdateForKey(MAIN_CLOUD_KEY, { batches: batchCount });
+            if (!mainInfoRes.success) showToast('主KEY更新失败，但分片已保存','warning');
+            const fields = allFields.map(f => f.key);
+            exportWithFields(allData, '云端备份-人员档案'+getNowString()+'.xlsx', fields);
             showToast(`备份成功，共${batchCount}个分片，${totalItems}条数据`,'success');
         }
-        async function cloudUpdateForKeyRaw(key, rawString) { const url = `https://textdb.online/update/?key=${key}&value=${encodeURIComponent(rawString)}`; try { const resp = await fetch(url, { method: 'POST' }); if (resp.ok) { const json = await resp.json().catch(()=>null); if (json && json.status === 1) return { success: true }; } return { success: false, message: '云端返回异常' }; } catch(e) { return { success: false, message: e.message }; } }
+
         async function handleRestoreFromCloud() {
             showPasswordModal(async () => {
                 const mainInfo = await cloudReadForKey(MAIN_CLOUD_KEY);
-                if (!mainInfo || !mainInfo.batches) { const legacyData = await cloudReadForKey(MAIN_CLOUD_KEY); if (Array.isArray(legacyData)) { const converted = convertFromCloudFormat(legacyData); await applyCloudRestore(converted); return; } showToast('云端暂无备份数据','info'); return; }
-                const batchCount = mainInfo.batches; let cloudArray = [];
-                for (let i=1; i<=batchCount; i++) { const batchKey = `${MAIN_CLOUD_KEY}_batch${i}`; const decrypted = await cloudReadForKey(batchKey); if (decrypted && Array.isArray(decrypted)) cloudArray = cloudArray.concat(decrypted); else showToast(`分片${i}读取失败`,'error'); }
+                if (!mainInfo || !mainInfo.batches) { showToast('云端暂无备份数据','info'); return; }
+                const batchCount = mainInfo.batches;
+                let cloudArray = [];
+                for (let i = 1; i <= batchCount; i++) {
+                    const batchKey = `${MAIN_CLOUD_KEY}_batch${i}`;
+                    const decrypted = await cloudReadForKey(batchKey);
+                    if (decrypted && Array.isArray(decrypted)) cloudArray = cloudArray.concat(decrypted);
+                    else showToast(`分片${i}读取失败`,'error');
+                }
                 if (cloudArray.length === 0) { showToast('云端数据为空','info'); return; }
-                const convertedData = convertFromCloudFormat(cloudArray); await applyCloudRestore(convertedData);
+                const cloudData = convertFromCloudFormat(cloudArray);
+
+                const localMap = new Map(); allData.forEach((item, idx) => localMap.set(item.seq, { index: idx, data: item }));
+                let replaceCount = 0, addCount = 0, skipCount = 0;
+                const newData = [...allData];
+                for (let cloudItem of cloudData) {
+                    const seq = cloudItem.seq;
+                    if (localMap.has(seq)) {
+                        const localEntry = localMap.get(seq);
+                        if (deepEqual(localEntry.data, cloudItem)) skipCount++;
+                        else { newData[localEntry.index] = cloudItem; replaceCount++; }
+                    } else { newData.push(cloudItem); addCount++; }
+                }
+
+                let msg = `云端${cloudData.length}条，本地${allData.length}条。`;
+                if (replaceCount > 0) msg += ` 将更新${replaceCount}条。`;
+                if (addCount > 0) msg += ` 将新增${addCount}条。`;
+                if (skipCount > 0) msg += ` 相同跳过${skipCount}条。`;
+
+                if (cloudData.length >= allData.length) {
+                    if (confirm(msg + '\n确定用云端数据更新本地吗？')) {
+                        allData = newData; saveLocal(allData); refreshAllViews(); showToast('已从云端恢复','success');
+                    }
+                } else {
+                    msg += `\n注意：本地有${allData.length - cloudData.length}条数据云端不存在，继续将保留这些本地数据。`;
+                    if (confirm(msg + '\n确定恢复吗？')) {
+                        allData = newData; saveLocal(allData); refreshAllViews();
+                        showToast(`恢复完成：更新${replaceCount}条，新增${addCount}条，跳过${skipCount}条`,'success');
+                    }
+                }
             });
-        }
-        async function applyCloudRestore(cloudData) {
-            const localMap = new Map(); allData.forEach((item, idx) => localMap.set(item.seq, { index: idx, data: item }));
-            let replaceCount=0, addCount=0, skipCount=0;
-            for (let cloudItem of cloudData) { const seq = cloudItem.seq; if (localMap.has(seq)) { const localEntry = localMap.get(seq); if (deepEqual(localEntry.data, cloudItem)) skipCount++; else { allData[localEntry.index] = cloudItem; replaceCount++; } } else { allData.push(cloudItem); addCount++; } }
-            saveLocal(allData); refreshAllViews();
-            let msg = `从云端恢复了 ${cloudData.length} 条数据。`; if (replaceCount>0) msg += ` 更新 ${replaceCount} 条。`; if (addCount>0) msg += ` 新增 ${addCount} 条。`; if (skipCount>0) msg += ` 跳过 ${skipCount} 条。`; showToast(msg,'success');
         }
 
         window.performLogin = performLogin; window.logout = logout;
